@@ -94,7 +94,7 @@ mod tests {
     };
 
     #[tokio::test]
-    async fn test_initialize_vote_account() {
+    async fn test_initialize_vote_account_basic() {
         let mut context = program_test().start_with_context().await;
         setup_clock(&mut context, None).await;
 
@@ -138,7 +138,7 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn test_update_commission() {
+    async fn test_update_commission_basic() {
         let mut context = program_test().start_with_context().await;
         setup_clock(&mut context, None).await;
 
@@ -199,5 +199,71 @@ mod tests {
         let vote_state: &VoteState = pod_from_bytes(&account.data).unwrap();
 
         assert_eq!(69, vote_state.commission);
+    }
+
+    #[tokio::test]
+    async fn test_update_validator_identity_basic() {
+        let mut context = program_test().start_with_context().await;
+        setup_clock(&mut context, None).await;
+
+        let vote_account = Keypair::new();
+        let node_key = Keypair::new();
+        let authorized_voter = Keypair::new();
+        let authorized_withdrawer = Keypair::new();
+
+        // This (probably) won't fail (p is very low)
+        let new_node_key = Keypair::new();
+        assert_ne!(node_key, new_node_key);
+
+        // Create a vote account
+        initialize_vote_account(
+            &mut context,
+            &vote_account,
+            &node_key,
+            &authorized_voter.pubkey(),
+            &authorized_withdrawer.pubkey(),
+            42,
+        )
+        .await;
+
+        let account = context
+            .banks_client
+            .get_account(vote_account.pubkey())
+            .await
+            .unwrap()
+            .unwrap();
+
+        let vote_state: &VoteState = pod_from_bytes(&account.data).unwrap();
+
+        assert_eq!(node_key.pubkey(), vote_state.node_pubkey);
+
+        // Issue an UpdateValidatorIdentity transaction
+        let update_vi_txn = Transaction::new_signed_with_payer(
+            &[instruction::update_validator_identity(
+                vote_account.pubkey(),
+                authorized_withdrawer.pubkey(),
+                new_node_key.pubkey(),
+            )],
+            Some(&context.payer.pubkey()),
+            &[&context.payer, &new_node_key, &authorized_withdrawer],
+            context.last_blockhash,
+        );
+
+        context
+            .banks_client
+            .process_transaction(update_vi_txn)
+            .await
+            .unwrap();
+
+        // Ensure that the set commission mastches
+        let account = context
+            .banks_client
+            .get_account(vote_account.pubkey())
+            .await
+            .unwrap()
+            .unwrap();
+        let vote_state: &VoteState = pod_from_bytes(&account.data).unwrap();
+
+        assert_eq!(new_node_key.pubkey(), vote_state.node_pubkey);
     }
 }

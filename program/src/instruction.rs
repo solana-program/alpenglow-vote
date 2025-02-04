@@ -352,11 +352,11 @@ pub fn withdraw(
 pub fn update_validator_identity(
     vote_pubkey: Pubkey,
     authorized_withdrawer_pubkey: Pubkey,
-    node_pubkey: Pubkey,
+    new_node_pubkey: Pubkey,
 ) -> Instruction {
     let accounts = vec![
         AccountMeta::new(vote_pubkey, false),
-        AccountMeta::new_readonly(node_pubkey, true),
+        AccountMeta::new_readonly(new_node_pubkey, true),
         AccountMeta::new_readonly(authorized_withdrawer_pubkey, true),
     ];
 
