@@ -376,14 +376,16 @@ pub fn update_validator_identity(
 pub fn update_commission(
     vote_pubkey: Pubkey,
     authorized_withdrawer_pubkey: Pubkey,
-    commission: u8,
+    new_commission: u8,
 ) -> Instruction {
     let accounts = vec![
         AccountMeta::new(vote_pubkey, false),
+        AccountMeta::new(sysvar::epoch_schedule::id(), false),
+        AccountMeta::new(sysvar::clock::id(), false),
         AccountMeta::new_readonly(authorized_withdrawer_pubkey, true),
     ];
 
-    encode_instruction(accounts, VoteInstruction::UpdateCommission, &commission)
+    encode_instruction(accounts, VoteInstruction::UpdateCommission, &new_commission)
 }
 
 /// Utility function for encoding instruction data

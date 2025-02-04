@@ -2,12 +2,10 @@
 
 use {
     alpenglow_vote::{
-        accounting::EpochCredit,
         instruction::{self, InitializeAccountInstructionData},
         processor::process_instruction,
-        state::{BlockTimestamp, VoteState},
+        state::VoteState,
     },
-    rand::Rng,
     solana_program::pubkey::Pubkey,
     solana_program_test::*,
     solana_sdk::{
@@ -17,7 +15,6 @@ use {
         system_instruction,
         transaction::Transaction,
     },
-    spl_pod::bytemuck::pod_from_bytes,
 };
 
 fn program_test() -> ProgramTest {
@@ -79,44 +76,128 @@ async fn initialize_vote_account(
         .unwrap();
 }
 
-#[tokio::test]
-async fn test_initialize_vote_account() {
-    let mut context = program_test().start_with_context().await;
-    setup_clock(&mut context, None).await;
+mod tests {
+    use {
+        crate::{initialize_vote_account, program_test, setup_clock, EPOCH},
+        alpenglow_vote::{
+            accounting::EpochCredit,
+            instruction::{self},
+            state::{BlockTimestamp, VoteState},
+        },
+        rand::Rng,
+        solana_program_test::*,
+        solana_sdk::{
+            signature::{Keypair, Signer},
+            transaction::Transaction,
+        },
+        spl_pod::bytemuck::pod_from_bytes,
+    };
 
-    let vote_account = Keypair::new();
-    let node_key = Keypair::new();
-    let authorized_voter = Keypair::new();
-    let authorized_withdrawer = Keypair::new();
-    let commission: u8 = rand::rng().random();
+    #[tokio::test]
+    async fn test_initialize_vote_account() {
+        let mut context = program_test().start_with_context().await;
+        setup_clock(&mut context, None).await;
 
-    initialize_vote_account(
-        &mut context,
-        &vote_account,
-        &node_key,
-        &authorized_voter.pubkey(),
-        &authorized_withdrawer.pubkey(),
-        commission,
-    )
-    .await;
+        let vote_account = Keypair::new();
+        let node_key = Keypair::new();
+        let authorized_voter = Keypair::new();
+        let authorized_withdrawer = Keypair::new();
+        let commission: u8 = rand::rng().random();
 
-    let vote_account = context
-        .banks_client
-        .get_account(vote_account.pubkey())
-        .await
-        .unwrap()
-        .unwrap();
-    let vote_state: &VoteState = pod_from_bytes(&vote_account.data).unwrap();
-    assert_eq!(1, vote_state.version);
-    assert_eq!(node_key.pubkey(), vote_state.node_pubkey);
-    assert_eq!(
-        authorized_withdrawer.pubkey(),
-        vote_state.authorized_withdrawer
-    );
-    assert_eq!(commission, vote_state.commission);
-    assert_eq!(authorized_voter.pubkey(), vote_state.authorized_voter.voter);
-    assert_eq!(EPOCH, u64::from(vote_state.authorized_voter.epoch));
-    assert_eq!(None, vote_state.next_authorized_voter);
-    assert_eq!(EpochCredit::default(), vote_state.epoch_credits);
-    assert_eq!(BlockTimestamp::default(), vote_state.last_timestamp);
+        initialize_vote_account(
+            &mut context,
+            &vote_account,
+            &node_key,
+            &authorized_voter.pubkey(),
+            &authorized_withdrawer.pubkey(),
+            commission,
+        )
+        .await;
+
+        let vote_account = context
+            .banks_client
+            .get_account(vote_account.pubkey())
+            .await
+            .unwrap()
+            .unwrap();
+
+        let vote_state: &VoteState = pod_from_bytes(&vote_account.data).unwrap();
+
+        assert_eq!(1, vote_state.version);
+        assert_eq!(node_key.pubkey(), vote_state.node_pubkey);
+        assert_eq!(
+            authorized_withdrawer.pubkey(),
+            vote_state.authorized_withdrawer
+        );
+        assert_eq!(commission, vote_state.commission);
+        assert_eq!(authorized_voter.pubkey(), vote_state.authorized_voter.voter);
+        assert_eq!(EPOCH, u64::from(vote_state.authorized_voter.epoch));
+        assert_eq!(None, vote_state.next_authorized_voter);
+        assert_eq!(EpochCredit::default(), vote_state.epoch_credits);
+        assert_eq!(BlockTimestamp::default(), vote_state.last_timestamp);
+    }
+
+    #[tokio::test]
+    async fn test_update_commission() {
+        let mut context = program_test().start_with_context().await;
+        setup_clock(&mut context, None).await;
+
+        let vote_account = Keypair::new();
+        let node_key = Keypair::new();
+        let authorized_voter = Keypair::new();
+        let authorized_withdrawer = Keypair::new();
+
+        // Create a vote account with known commission
+        let commission_before: u8 = 42;
+        let commission_after: u8 = 69;
+
+        initialize_vote_account(
+            &mut context,
+            &vote_account,
+            &node_key,
+            &authorized_voter.pubkey(),
+            &authorized_withdrawer.pubkey(),
+            commission_before,
+        )
+        .await;
+
+        let account = context
+            .banks_client
+            .get_account(vote_account.pubkey())
+            .await
+            .unwrap()
+            .unwrap();
+        let vote_state: &VoteState = pod_from_bytes(&account.data).unwrap();
+
+        assert_eq!(42, vote_state.commission);
+
+        // Issue an UpdateCommission transaction
+        let update_commission_txn = Transaction::new_signed_with_payer(
+            &[instruction::update_commission(
+                vote_account.pubkey(),
+                authorized_withdrawer.pubkey(),
+                commission_after,
+            )],
+            Some(&context.payer.pubkey()),
+            &[&context.payer, &authorized_withdrawer],
+            context.last_blockhash,
+        );
+
+        context
+            .banks_client
+            .process_transaction(update_commission_txn)
+            .await
+            .unwrap();
+
+        // Ensure that the set commission mastches
+        let account = context
+            .banks_client
+            .get_account(vote_account.pubkey())
+            .await
+            .unwrap()
+            .unwrap();
+        let vote_state: &VoteState = pod_from_bytes(&account.data).unwrap();
+
+        assert_eq!(69, vote_state.commission);
+    }
 }
