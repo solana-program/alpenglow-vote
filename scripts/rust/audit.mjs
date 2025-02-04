@@ -20,6 +20,15 @@ const advisories = [
   // URL:       https://rustsec.org/advisories/RUSTSEC-2024-0376
   // Solution:  Upgrade to >=0.12.3
   'RUSTSEC-2024-0376',
+
+  // Crate:     openssl
+  // Version:   0.10.69
+  // Title:     ssl::select_next_proto use after free
+  // Date:      2025-02-02
+  // ID:        RUSTSEC-2025-0004
+  // URL:       https://rustsec.org/advisories/RUSTSEC-2025-0004
+  // Solution:  Upgrade to >=0.10.70
+  'RUSTSEC-2025-0004'
 ];
 const ignores = []
 advisories.forEach(x => {
