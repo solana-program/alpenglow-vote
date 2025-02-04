@@ -54,3 +54,9 @@ retransmitter/SM
 FEC
 sigverify
 TODO
+VoteState
+vote_state
+staker's
+VoteAccount
+node_pubkey
+Withdrawer

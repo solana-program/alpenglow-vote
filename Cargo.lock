@@ -151,7 +151,6 @@ dependencies = [
  "solana-sdk",
  "solana-signature",
  "spl-pod 0.5.0",
- "spl-record",
  "thiserror 2.0.11",
 ]
 
@@ -6479,27 +6478,6 @@ dependencies = [
  "quote",
  "sha2 0.10.8",
  "syn 2.0.96",
-]
-
-[[package]]
-name = "spl-record"
-version = "0.3.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "1288810a85bbe7e62ee3c6f7b8119e8c1016e90351411d12e4132e98c7ca7344"
-dependencies = [
- "bytemuck",
- "num-derive",
- "num-traits",
- "solana-account-info",
- "solana-decode-error",
- "solana-instruction",
- "solana-msg",
- "solana-program-entrypoint",
- "solana-program-error",
- "solana-program-pack",
- "solana-pubkey",
- "solana-rent",
- "thiserror 1.0.69",
 ]
 
 [[package]]
