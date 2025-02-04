@@ -2,9 +2,7 @@ name: Main
 
 on:
   push:
-    branches: [master]
   pull_request:
-    branches: [master]
 
 jobs:
   format_and_lint_programs:
