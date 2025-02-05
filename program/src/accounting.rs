@@ -5,6 +5,7 @@ use solana_program::account_info::AccountInfo;
 use solana_program::clock::Clock;
 use solana_program::clock::Slot;
 use solana_program::epoch_schedule::EpochSchedule;
+use solana_program::msg;
 use solana_program::program_error::ProgramError;
 use solana_program::pubkey::Pubkey;
 use solana_program::rent::Rent;
@@ -125,14 +126,18 @@ pub(crate) fn withdraw(
         }
     }
 
-    let vote_account_lamports = vote_account.try_borrow_mut_lamports()?;
-    vote_account_lamports
+    let mut vote_account_lamports = vote_account.try_borrow_mut_lamports()?;
+
+    **vote_account_lamports = vote_account_lamports
         .checked_sub(lamports)
         .ok_or(ProgramError::InsufficientFunds)?;
-    let recipient_lamports = recipient.try_borrow_mut_lamports()?;
-    recipient_lamports
+
+    let mut recipient_lamports = recipient.try_borrow_mut_lamports()?;
+
+    **recipient_lamports = recipient_lamports
         .checked_add(lamports)
         .ok_or(ProgramError::ArithmeticOverflow)?;
+
     Ok(())
 }
 

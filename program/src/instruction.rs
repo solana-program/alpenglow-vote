@@ -4,6 +4,7 @@ use {
     crate::{error::VoteError, id},
     bytemuck::{Pod, Zeroable},
     num_enum::{IntoPrimitive, TryFromPrimitive},
+    solana_program::msg,
     solana_program::{
         instruction::{AccountMeta, Instruction},
         program_error::ProgramError,
@@ -334,11 +335,13 @@ pub fn withdraw(
     vote_pubkey: Pubkey,
     authorized_withdrawer_pubkey: Pubkey,
     lamports: u64,
-    recipient: Pubkey,
+    recipient_pubkey: Pubkey,
 ) -> Instruction {
     let accounts = vec![
         AccountMeta::new(vote_pubkey, false),
-        AccountMeta::new(recipient, false),
+        AccountMeta::new(recipient_pubkey, false),
+        AccountMeta::new_readonly(sysvar::rent::id(), false),
+        AccountMeta::new_readonly(sysvar::clock::id(), false),
         AccountMeta::new_readonly(authorized_withdrawer_pubkey, true),
     ];
 
