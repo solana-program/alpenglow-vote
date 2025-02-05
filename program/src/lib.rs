@@ -1,6 +1,7 @@
 //! Alpenglow Vote program
 #![deny(missing_docs)]
 
+pub mod accounting;
 mod entrypoint;
 pub mod error;
 pub mod instruction;
