@@ -316,7 +316,7 @@ pub fn authorize_checked_with_seed(
 
     encode_instruction_with_seed(
         accounts,
-        VoteInstruction::AuthorizeWithSeed,
+        VoteInstruction::AuthorizeCheckedWithSeed,
         &AuthorizeCheckedWithSeedInstructionData {
             authority_type: u8::from(authorization_type),
             current_authority_derived_key_owner,
