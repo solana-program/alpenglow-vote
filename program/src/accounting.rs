@@ -3,6 +3,7 @@
 use bytemuck::{Pod, PodInOption, Zeroable, ZeroableInOption};
 use solana_program::account_info::AccountInfo;
 use solana_program::clock::Clock;
+use solana_program::clock::Epoch;
 use solana_program::clock::Slot;
 use solana_program::epoch_schedule::EpochSchedule;
 use solana_program::program_error::ProgramError;
@@ -19,10 +20,38 @@ use crate::state::{PodEpoch, VoteState};
 #[repr(C)]
 #[derive(Clone, Copy, Debug, Pod, Zeroable, Default, PartialEq)]
 pub struct AuthorizedVoter {
-    /// Epoch that is authorized
-    pub epoch: PodEpoch,
-    /// Voter that is authorized
-    pub voter: Pubkey,
+    pub(crate) epoch: PodEpoch,
+    pub(crate) voter: Pubkey,
+}
+
+impl AuthorizedVoter {
+    /// Create a new authorized voter for `epoch`
+    pub fn new(epoch: Epoch, voter: Pubkey) -> Self {
+        Self {
+            epoch: PodEpoch::from(epoch),
+            voter,
+        }
+    }
+
+    /// Get the authorization epoch
+    pub fn epoch(&self) -> Epoch {
+        Epoch::from(self.epoch)
+    }
+
+    /// Get the voter that is authorized
+    pub fn voter(&self) -> &Pubkey {
+        &self.voter
+    }
+
+    /// Set the authorization epoch
+    pub fn set_epoch(&mut self, epoch: Epoch) {
+        self.epoch = PodEpoch::from(epoch);
+    }
+
+    /// Set the voter that is authorized
+    pub fn set_voter(&mut self, voter: Pubkey) {
+        self.voter = voter;
+    }
 }
 
 // UNSAFE: we require that `epoch > 0` so this is safe
@@ -33,12 +62,50 @@ unsafe impl PodInOption for AuthorizedVoter {}
 #[repr(C)]
 #[derive(Clone, Copy, Debug, Pod, Zeroable, Default, PartialEq)]
 pub struct EpochCredit {
-    /// Epoch in which credits were earned
-    pub epoch: PodEpoch,
-    /// Credits earned
-    pub credits: PodU64,
-    /// Credits earned in the previous epoch
-    pub prev_credits: PodU64,
+    pub(crate) epoch: PodEpoch,
+    pub(crate) credits: PodU64,
+    pub(crate) prev_credits: PodU64,
+}
+
+impl EpochCredit {
+    /// Create a new epoch credit
+    pub fn new(epoch: Epoch, credits: u64, prev_credits: u64) -> Self {
+        Self {
+            epoch: PodEpoch::from(epoch),
+            credits: PodU64::from(credits),
+            prev_credits: PodU64::from(prev_credits),
+        }
+    }
+
+    /// Get epoch in which credits were earned
+    pub fn epoch(&self) -> u64 {
+        u64::from(self.epoch)
+    }
+
+    /// Get the credits earned
+    pub fn credits(&self) -> u64 {
+        u64::from(self.credits)
+    }
+
+    /// Get the credits earned in the previous epoch
+    pub fn prev_credits(&self) -> u64 {
+        u64::from(self.prev_credits)
+    }
+
+    /// Set epoch in which credits were earned
+    pub fn set_epoch(&mut self, epoch: Epoch) {
+        self.epoch = PodEpoch::from(epoch);
+    }
+
+    /// Set the credits earned
+    pub fn set_credits(&mut self, credits: u64) {
+        self.credits = PodU64::from(credits);
+    }
+
+    /// Set the credits earned in the previous epoch
+    pub fn set_prev_credits(&mut self, prev_credits: u64) {
+        self.prev_credits = PodU64::from(prev_credits);
+    }
 }
 
 /// Authorize the given pubkey to withdraw or sign votes. This may be called multiple times,

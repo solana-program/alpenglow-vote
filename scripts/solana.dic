@@ -59,4 +59,6 @@ vote_state
 staker's
 VoteAccount
 node_pubkey
-Withdrawer
+withdrawer/W
+block_id
+bank_hash

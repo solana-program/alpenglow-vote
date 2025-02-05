@@ -1,7 +1,17 @@
 //! Program instructions
 
 use {
-    crate::{error::VoteError, id},
+    crate::{
+        error::VoteError,
+        id,
+        state::{PodSlot, PodUnixTimestamp},
+        vote::{FinalizationVote, NotarizationVote, SkipVote},
+        vote_processor::{
+            FinalizationVoteInstructionData, NotarizationVoteInstructionData,
+            SkipVoteInstructionData, CURRENT_FINALIZE_VOTE_VERSION, CURRENT_NOTARIZE_VOTE_VERSION,
+            CURRENT_SKIP_VOTE_VERSION,
+        },
+    },
     bytemuck::{Pod, Zeroable},
     num_enum::{IntoPrimitive, TryFromPrimitive},
     solana_program::{
@@ -110,6 +120,106 @@ pub enum VoteInstruction {
     ///   Data expected by this instruction:
     ///     `commission` : `u8`
     UpdateCommission,
+
+    /// A notarization vote
+    ///
+    /// # Account references
+    ///   0. `[WRITE]` Vote account to be updated
+    ///   1. `[SIGNER]` Vote authority
+    ///
+    ///   Data expected by this instruction:
+    ///     `NotarizationVoteInstructionData`
+    Notarize,
+
+    /// A finalization vote
+    ///
+    /// # Account references
+    ///   0. `[WRITE]` Vote account to be updated
+    ///   1. `[SIGNER]` Vote authority
+    ///
+    ///   Data expected by this instruction:
+    ///     `FinaizationVoteInstructionData`
+    Finalize,
+
+    /// A skip vote
+    ///
+    /// # Account references
+    ///   0. `[WRITE]` Vote account to be updated
+    ///   1. `[SIGNER]` Vote authority
+    ///
+    ///   Data expected by this instruction:
+    ///     `SkipVoteInstructionData`
+    Skip,
+}
+
+/// Instruction builder to create a notarization vote
+pub fn notarize(
+    vote_pubkey: Pubkey,
+    vote_authority: Pubkey,
+    vote: NotarizationVote,
+) -> Instruction {
+    let accounts = vec![
+        AccountMeta::new(vote_pubkey, false),
+        AccountMeta::new_readonly(vote_authority, true),
+    ];
+
+    encode_instruction(
+        accounts,
+        VoteInstruction::Notarize,
+        &NotarizationVoteInstructionData {
+            version: CURRENT_NOTARIZE_VOTE_VERSION,
+            slot: PodSlot::from(vote.slot()),
+            block_id: *vote.block_id(),
+            replayed_slot: PodSlot::from(vote.replayed_slot()),
+            replayed_bank_hash: *vote.replayed_bank_hash(),
+            timestamp: PodUnixTimestamp::from(vote.timestamp()),
+        },
+    )
+}
+
+/// Instruction builder to create a finalization vote
+pub fn finalize(
+    vote_pubkey: Pubkey,
+    vote_authority: Pubkey,
+    vote: FinalizationVote,
+) -> Instruction {
+    let accounts = vec![
+        AccountMeta::new(vote_pubkey, false),
+        AccountMeta::new_readonly(vote_authority, true),
+    ];
+
+    encode_instruction(
+        accounts,
+        VoteInstruction::Finalize,
+        &FinalizationVoteInstructionData {
+            version: CURRENT_FINALIZE_VOTE_VERSION,
+            slot: PodSlot::from(vote.slot()),
+            block_id: *vote.block_id(),
+            replayed_slot: PodSlot::from(vote.replayed_slot()),
+            replayed_bank_hash: *vote.replayed_bank_hash(),
+            timestamp: PodUnixTimestamp::from(vote.timestamp()),
+        },
+    )
+}
+
+/// Instruction builder to create a skip vote
+pub fn skip(vote_pubkey: Pubkey, vote_authority: Pubkey, vote: SkipVote) -> Instruction {
+    let accounts = vec![
+        AccountMeta::new(vote_pubkey, false),
+        AccountMeta::new_readonly(vote_authority, true),
+    ];
+    let (start_slot, end_slot) = vote.skip_range();
+
+    encode_instruction(
+        accounts,
+        VoteInstruction::Finalize,
+        &SkipVoteInstructionData {
+            version: CURRENT_SKIP_VOTE_VERSION,
+            start_slot: PodSlot::from(start_slot),
+            end_slot: PodSlot::from(end_slot),
+            timestamp: PodUnixTimestamp::from(vote.timestamp()),
+        },
+    )
 }
 
 /// Data expected by
