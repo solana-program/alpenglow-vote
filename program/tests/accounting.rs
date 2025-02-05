@@ -410,10 +410,10 @@ async fn test_authorize_with_seed_voter_basic() {
     let node_key = Keypair::new();
 
     let authorized_voter =
-        Pubkey::create_with_seed(&base_key.pubkey(), &voter_seed, &owner.pubkey()).unwrap();
+        Pubkey::create_with_seed(&base_key.pubkey(), voter_seed, &owner.pubkey()).unwrap();
 
     let authorized_withdrawer =
-        Pubkey::create_with_seed(&base_key.pubkey(), &withdrawer_seed, &owner.pubkey()).unwrap();
+        Pubkey::create_with_seed(&base_key.pubkey(), withdrawer_seed, &owner.pubkey()).unwrap();
 
     let new_authority = Keypair::new();
 
@@ -489,10 +489,10 @@ async fn test_authorize_with_seed_withdrawer_basic() {
     let node_key = Keypair::new();
 
     let authorized_voter =
-        Pubkey::create_with_seed(&base_key.pubkey(), &voter_seed, &owner.pubkey()).unwrap();
+        Pubkey::create_with_seed(&base_key.pubkey(), voter_seed, &owner.pubkey()).unwrap();
 
     let authorized_withdrawer =
-        Pubkey::create_with_seed(&base_key.pubkey(), &withdrawer_seed, &owner.pubkey()).unwrap();
+        Pubkey::create_with_seed(&base_key.pubkey(), withdrawer_seed, &owner.pubkey()).unwrap();
 
     let new_authority = Keypair::new();
 
@@ -565,10 +565,10 @@ async fn test_authorize_checked_with_seed_voter_basic() {
     let node_key = Keypair::new();
 
     let authorized_voter =
-        Pubkey::create_with_seed(&base_key.pubkey(), &voter_seed, &owner.pubkey()).unwrap();
+        Pubkey::create_with_seed(&base_key.pubkey(), voter_seed, &owner.pubkey()).unwrap();
 
     let authorized_withdrawer =
-        Pubkey::create_with_seed(&base_key.pubkey(), &withdrawer_seed, &owner.pubkey()).unwrap();
+        Pubkey::create_with_seed(&base_key.pubkey(), withdrawer_seed, &owner.pubkey()).unwrap();
 
     let new_authority = Keypair::new();
 
@@ -644,10 +644,10 @@ async fn test_authorize_checked_with_seed_withdrawer_basic() {
     let node_key = Keypair::new();
 
     let authorized_voter =
-        Pubkey::create_with_seed(&base_key.pubkey(), &voter_seed, &owner.pubkey()).unwrap();
+        Pubkey::create_with_seed(&base_key.pubkey(), voter_seed, &owner.pubkey()).unwrap();
 
     let authorized_withdrawer =
-        Pubkey::create_with_seed(&base_key.pubkey(), &withdrawer_seed, &owner.pubkey()).unwrap();
+        Pubkey::create_with_seed(&base_key.pubkey(), withdrawer_seed, &owner.pubkey()).unwrap();
 
     let new_authority = Keypair::new();
 

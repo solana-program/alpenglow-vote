@@ -8,7 +8,6 @@ use {
         instruction::{AccountMeta, Instruction},
         program_error::ProgramError,
         pubkey::Pubkey,
-        sysvar,
     },
     spl_pod::{
         bytemuck::{pod_bytes_of, pod_from_bytes, pod_get_packed_len},
@@ -25,9 +24,7 @@ pub enum VoteInstruction {
     ///
     /// # Account references
     ///   0. `[WRITE]` Uninitialized vote account
-    ///   1. `[]` Rent sysvar
-    ///   2. `[]` Clock sysvar
-    ///   3. `[SIGNER]` New validator identity (node_pubkey)
+    ///   1. `[SIGNER]` New validator identity (node_pubkey)
     ///
     ///   Data expected by this instruction:
     ///     `InitializeAccountInstructionData`
@@ -37,8 +34,7 @@ pub enum VoteInstruction {
     ///
     /// # Account references
     ///   0. `[WRITE]` Vote account to be updated with the Pubkey for authorization
-    ///   1. `[]` Clock sysvar
-    ///   2. `[SIGNER]` Vote or withdraw authority
+    ///   1. `[SIGNER]` Vote or withdraw authority
     ///
     ///   Data expected by this instruction:
     ///     `AuthorizeInstructionData`
@@ -51,9 +47,8 @@ pub enum VoteInstruction {
     ///
     /// # Account references
     ///   0. `[WRITE]` Vote account to be updated with the Pubkey for authorization
-    ///   1. `[]` Clock sysvar
-    ///   2. `[SIGNER]` Vote or withdraw authority
-    ///   3. `[SIGNER]` New vote or withdraw authority
+    ///   1. `[SIGNER]` Vote or withdraw authority
+    ///   2. `[SIGNER]` New vote or withdraw authority
     ///
     ///   Data expected by this instruction:
     ///     `VoteAuthorize`
@@ -65,8 +60,7 @@ pub enum VoteInstruction {
     ///
     /// # Account references
     ///   0. `[Write]` Vote account to be updated
-    ///   1. `[]` Clock sysvar
-    ///   2. `[SIGNER]` Base key of current Voter or Withdrawer authority's derived key
+    ///   1. `[SIGNER]` Base key of current Voter or Withdrawer authority's derived key
     ///
     ///   Data expected by this instruction:
     ///     `AuthorizeWithSeedInstructionData`
@@ -81,9 +75,8 @@ pub enum VoteInstruction {
     ///
     /// # Account references
     ///   0. `[Write]` Vote account to be updated
-    ///   1. `[]` Clock sysvar
-    ///   2. `[SIGNER]` Base key of current Voter or Withdrawer authority's derived key
-    ///   3. `[SIGNER]` New vote or withdraw authority
+    ///   1. `[SIGNER]` Base key of current Voter or Withdrawer authority's derived key
+    ///   2. `[SIGNER]` New vote or withdraw authority
     ///
     ///   Data expected by this instruction:
     ///     `AuthorizeCheckedWithSeedInstructionData`
@@ -94,9 +87,7 @@ pub enum VoteInstruction {
     /// # Account references
     ///   0. `[WRITE]` Vote account to withdraw from
     ///   1. `[WRITE]` Recipient account
-    ///   2. `[]` Rent sysvar
-    ///   3. `[]` Clock sysvar
-    ///   4. `[SIGNER]` Withdraw authority
+    ///   2. `[SIGNER]` Withdraw authority
     ///
     ///   Data expected by this instruction:
     ///     `lamports` : `u64`
@@ -114,9 +105,7 @@ pub enum VoteInstruction {
     ///
     /// # Account references
     ///   0. `[WRITE]` Vote account to be updated
-    ///   1. `[]` Epoch schedule sysvar
-    ///   2. `[]` Clock sysvar
-    ///   3. `[SIGNER]` Withdraw authority
+    ///   1. `[SIGNER]` Withdraw authority
     ///
     ///   Data expected by this instruction:
     ///     `commission` : `u8`
@@ -146,8 +135,6 @@ pub fn initialize_account(
 ) -> Instruction {
     let accounts = vec![
         AccountMeta::new(vote_pubkey, false),
-        AccountMeta::new_readonly(sysvar::rent::id(), false),
-        AccountMeta::new_readonly(sysvar::clock::id(), false),
         AccountMeta::new_readonly(instruction_data.node_pubkey, true),
     ];
 
@@ -192,7 +179,6 @@ pub fn authorize(
 ) -> Instruction {
     let accounts = vec![
         AccountMeta::new(vote_pubkey, false),
-        AccountMeta::new_readonly(sysvar::clock::id(), false),
         AccountMeta::new_readonly(authorized_pubkey, true),
     ];
 
@@ -220,7 +206,6 @@ pub fn authorize_checked(
 ) -> Instruction {
     let accounts = vec![
         AccountMeta::new(vote_pubkey, false),
-        AccountMeta::new_readonly(sysvar::clock::id(), false),
         AccountMeta::new_readonly(authorized_pubkey, true),
         AccountMeta::new_readonly(new_authorized_pubkey, true),
     ];
@@ -263,7 +248,6 @@ pub fn authorize_with_seed(
 ) -> Instruction {
     let accounts = vec![
         AccountMeta::new(vote_pubkey, false),
-        AccountMeta::new_readonly(sysvar::clock::id(), false),
         AccountMeta::new_readonly(current_authority_base_key, true),
     ];
 
@@ -309,7 +293,6 @@ pub fn authorize_checked_with_seed(
 ) -> Instruction {
     let accounts = vec![
         AccountMeta::new(vote_pubkey, false),
-        AccountMeta::new_readonly(sysvar::clock::id(), false),
         AccountMeta::new_readonly(current_authority_base_key, true),
         AccountMeta::new_readonly(new_authority, true),
     ];
@@ -339,8 +322,6 @@ pub fn withdraw(
     let accounts = vec![
         AccountMeta::new(vote_pubkey, false),
         AccountMeta::new(recipient_pubkey, false),
-        AccountMeta::new_readonly(sysvar::rent::id(), false),
-        AccountMeta::new_readonly(sysvar::clock::id(), false),
         AccountMeta::new_readonly(authorized_withdrawer_pubkey, true),
     ];
 
@@ -382,8 +363,6 @@ pub fn update_commission(
 ) -> Instruction {
     let accounts = vec![
         AccountMeta::new(vote_pubkey, false),
-        AccountMeta::new(sysvar::epoch_schedule::id(), false),
-        AccountMeta::new(sysvar::clock::id(), false),
         AccountMeta::new_readonly(authorized_withdrawer_pubkey, true),
     ];
 

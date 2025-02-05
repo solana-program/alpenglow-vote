@@ -37,14 +37,12 @@ pub fn process_instruction(
 
     match instruction_type {
         VoteInstruction::InitializeAccount => {
-            let rent_account = next_account_info(account_info_iter)?;
-            let rent = rent::Rent::from_account_info(rent_account)?;
+            let rent = rent::Rent::get()?;
             if !rent.is_exempt(vote_account.lamports(), vote_account.data_len()) {
                 return Err(ProgramError::InsufficientFunds);
             }
 
-            let clock_account = next_account_info(account_info_iter)?;
-            let clock = clock::Clock::from_account_info(clock_account)?;
+            let clock = clock::Clock::get()?;
 
             let Some(node_pubkey) = next_account_info(account_info_iter)?.signer_key() else {
                 return Err(ProgramError::MissingRequiredSignature);
@@ -59,8 +57,7 @@ pub fn process_instruction(
             initialize_account(vote_account, instruction_data, &clock)
         }
         VoteInstruction::Authorize => {
-            let clock_account = next_account_info(account_info_iter)?;
-            let clock = clock::Clock::from_account_info(clock_account)?;
+            let clock = clock::Clock::get()?;
 
             let Some(authority_pubkey) = next_account_info(account_info_iter)?.signer_key() else {
                 return Err(ProgramError::MissingRequiredSignature);
@@ -78,8 +75,7 @@ pub fn process_instruction(
             )
         }
         VoteInstruction::AuthorizeChecked => {
-            let clock_account = next_account_info(account_info_iter)?;
-            let clock = clock::Clock::from_account_info(clock_account)?;
+            let clock = clock::Clock::get()?;
 
             let Some(authority_pubkey) = next_account_info(account_info_iter)?.signer_key() else {
                 return Err(ProgramError::MissingRequiredSignature);
@@ -101,8 +97,7 @@ pub fn process_instruction(
             )
         }
         VoteInstruction::AuthorizeWithSeed => {
-            let clock_account = next_account_info(account_info_iter)?;
-            let clock = clock::Clock::from_account_info(clock_account)?;
+            let clock = clock::Clock::get()?;
 
             let Some(base_key) = next_account_info(account_info_iter)?.signer_key() else {
                 return Err(ProgramError::MissingRequiredSignature);
@@ -130,8 +125,7 @@ pub fn process_instruction(
             )
         }
         VoteInstruction::AuthorizeCheckedWithSeed => {
-            let clock_account = next_account_info(account_info_iter)?;
-            let clock = clock::Clock::from_account_info(clock_account)?;
+            let clock = clock::Clock::get()?;
 
             let Some(base_key) = next_account_info(account_info_iter)?.signer_key() else {
                 return Err(ProgramError::MissingRequiredSignature);
@@ -166,10 +160,8 @@ pub fn process_instruction(
         }
         VoteInstruction::Withdraw => {
             let recipient = next_account_info(account_info_iter)?;
-            let rent_account = next_account_info(account_info_iter)?;
-            let rent = rent::Rent::from_account_info(rent_account)?;
-            let clock_account = next_account_info(account_info_iter)?;
-            let clock = clock::Clock::from_account_info(clock_account)?;
+            let rent = rent::Rent::get()?;
+            let clock = clock::Clock::get()?;
 
             let Some(withdraw_authority_pubkey) =
                 next_account_info(account_info_iter)?.signer_key()
@@ -198,11 +190,8 @@ pub fn process_instruction(
             accounting::update_validator_identity(vote_account, new_node_pubkey, withdraw_pubkey)
         }
         VoteInstruction::UpdateCommission => {
-            let epoch_schedule_account = next_account_info(account_info_iter)?;
-            let epoch_schedule =
-                epoch_schedule::EpochSchedule::from_account_info(epoch_schedule_account)?;
-            let clock_account = next_account_info(account_info_iter)?;
-            let clock = clock::Clock::from_account_info(clock_account)?;
+            let epoch_schedule = epoch_schedule::EpochSchedule::get()?;
+            let clock = clock::Clock::get()?;
 
             let Some(withdraw_authority_pubkey) =
                 next_account_info(account_info_iter)?.signer_key()
