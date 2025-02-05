@@ -397,6 +397,161 @@ async fn test_authorize_checked_withdrawer_basic() {
 }
 
 #[tokio::test]
+async fn test_authorize_with_seed_voter_basic() {
+    let mut context = program_test().start_with_context().await;
+    setup_clock(&mut context, None).await;
+
+    let owner = Keypair::new();
+    let base_key = Keypair::new();
+    let voter_seed = "voter-thequickbrownfox";
+    let withdrawer_seed = "withdrawer-thequickbrownfox";
+
+    let vote_account = Keypair::new();
+    let node_key = Keypair::new();
+
+    let authorized_voter =
+        Pubkey::create_with_seed(&base_key.pubkey(), &voter_seed, &owner.pubkey()).unwrap();
+
+    let authorized_withdrawer =
+        Pubkey::create_with_seed(&base_key.pubkey(), &withdrawer_seed, &owner.pubkey()).unwrap();
+
+    let new_authority = Keypair::new();
+
+    // Create a vote account
+    initialize_vote_account(
+        &mut context,
+        &vote_account,
+        &node_key,
+        &authorized_voter,
+        &authorized_withdrawer,
+        42,
+        None,
+    )
+    .await;
+
+    let account = context
+        .banks_client
+        .get_account(vote_account.pubkey())
+        .await
+        .unwrap()
+        .unwrap();
+
+    let vote_state: &VoteState = pod_from_bytes(&account.data).unwrap();
+
+    assert!(vote_state.next_authorized_voter.is_none());
+
+    // Issue an Authorize transaction
+    let authorize_txn = Transaction::new_signed_with_payer(
+        &[instruction::authorize_with_seed(
+            vote_account.pubkey(),
+            base_key.pubkey(),
+            owner.pubkey(),
+            voter_seed,
+            new_authority.pubkey(),
+            AuthorityType::Voter,
+        )],
+        Some(&context.payer.pubkey()),
+        &[&context.payer, &base_key],
+        context.last_blockhash,
+    );
+
+    context
+        .banks_client
+        .process_transaction(authorize_txn)
+        .await
+        .unwrap();
+
+    let account = context
+        .banks_client
+        .get_account(vote_account.pubkey())
+        .await
+        .unwrap()
+        .unwrap();
+
+    let vote_state: &VoteState = pod_from_bytes(&account.data).unwrap();
+    assert_eq!(
+        Some(new_authority.pubkey()),
+        vote_state.next_authorized_voter.map(|nav| nav.voter),
+    );
+}
+
+#[tokio::test]
+async fn test_authorize_with_seed_withdrawer_basic() {
+    let mut context = program_test().start_with_context().await;
+    setup_clock(&mut context, None).await;
+
+    let owner = Keypair::new();
+    let base_key = Keypair::new();
+    let voter_seed = "voter-thequickbrownfox";
+    let withdrawer_seed = "withdrawer-thequickbrownfox";
+
+    let vote_account = Keypair::new();
+    let node_key = Keypair::new();
+
+    let authorized_voter =
+        Pubkey::create_with_seed(&base_key.pubkey(), &voter_seed, &owner.pubkey()).unwrap();
+
+    let authorized_withdrawer =
+        Pubkey::create_with_seed(&base_key.pubkey(), &withdrawer_seed, &owner.pubkey()).unwrap();
+
+    let new_authority = Keypair::new();
+
+    // Create a vote account
+    initialize_vote_account(
+        &mut context,
+        &vote_account,
+        &node_key,
+        &authorized_voter,
+        &authorized_withdrawer,
+        42,
+        None,
+    )
+    .await;
+
+    let account = context
+        .banks_client
+        .get_account(vote_account.pubkey())
+        .await
+        .unwrap()
+        .unwrap();
+
+    let vote_state: &VoteState = pod_from_bytes(&account.data).unwrap();
+
+    assert!(vote_state.next_authorized_voter.is_none());
+
+    // Issue an Authorize transaction
+    let authorize_txn = Transaction::new_signed_with_payer(
+        &[instruction::authorize_with_seed(
+            vote_account.pubkey(),
+            base_key.pubkey(),
+            owner.pubkey(),
+            withdrawer_seed,
+            new_authority.pubkey(),
+            AuthorityType::Withdrawer,
+        )],
+        Some(&context.payer.pubkey()),
+        &[&context.payer, &base_key],
+        context.last_blockhash,
+    );
+
+    context
+        .banks_client
+        .process_transaction(authorize_txn)
+        .await
+        .unwrap();
+
+    let account = context
+        .banks_client
+        .get_account(vote_account.pubkey())
+        .await
+        .unwrap()
+        .unwrap();
+
+    let vote_state: &VoteState = pod_from_bytes(&account.data).unwrap();
+    assert_eq!(new_authority.pubkey(), vote_state.authorized_withdrawer);
+}
+
+#[tokio::test]
 async fn test_update_commission_basic() {
     let mut context = program_test().start_with_context().await;
     setup_clock(&mut context, None).await;
