@@ -4,7 +4,6 @@ use {
     crate::{error::VoteError, id},
     bytemuck::{Pod, Zeroable},
     num_enum::{IntoPrimitive, TryFromPrimitive},
-    solana_program::msg,
     solana_program::{
         instruction::{AccountMeta, Instruction},
         program_error::ProgramError,

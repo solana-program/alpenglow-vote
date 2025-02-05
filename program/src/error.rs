@@ -13,7 +13,7 @@ pub enum VoteError {
     #[error("Cannot close vote account unless it stopped voting at least one full epoch ago")]
     ActiveVoteAccountClose,
 
-    /// Decreasing commission too late into the epoch
+    /// Increasing commission too late into the epoch
     #[error("Cannot update commission at this point in the epoch")]
     CommissionUpdateTooLate,
 

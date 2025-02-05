@@ -12,7 +12,6 @@ use {
     solana_program_test::*,
     solana_sdk::{
         clock::{Clock, Epoch, Slot},
-        msg,
         rent::Rent,
         signature::{Keypair, Signer},
         system_instruction,
@@ -50,9 +49,11 @@ async fn initialize_vote_account(
     excess_lamports: Option<u64>,
 ) {
     let account_length = VoteState::size();
+    let rent: Rent = context.banks_client.get_sysvar().await.unwrap();
 
-    let account_lamports =
-        1.max(Rent::default().minimum_balance(account_length) + excess_lamports.unwrap_or(0));
+    let account_lamports = rent
+        .minimum_balance(account_length)
+        .saturating_add(excess_lamports.unwrap_or(0));
 
     let transaction = Transaction::new_signed_with_payer(
         &[

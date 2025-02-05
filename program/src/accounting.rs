@@ -5,7 +5,6 @@ use solana_program::account_info::AccountInfo;
 use solana_program::clock::Clock;
 use solana_program::clock::Slot;
 use solana_program::epoch_schedule::EpochSchedule;
-use solana_program::msg;
 use solana_program::program_error::ProgramError;
 use solana_program::pubkey::Pubkey;
 use solana_program::rent::Rent;
