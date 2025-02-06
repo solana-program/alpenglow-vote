@@ -20,6 +20,9 @@ use crate::instruction::{
     AuthorizeWithSeedInstructionData, InitializeAccountInstructionData, VoteInstruction,
 };
 use crate::state::VoteState;
+use crate::vote_processor::{
+    self, FinalizationVoteInstructionData, NotarizationVoteInstructionData, SkipVoteInstructionData,
+};
 
 /// Instruction processor
 pub fn process_instruction(
@@ -208,6 +211,33 @@ pub fn process_instruction(
                 &epoch_schedule,
                 &clock,
             )
+        }
+        VoteInstruction::Notarize => {
+            let Some(authority) = next_account_info(account_info_iter)?.signer_key() else {
+                return Err(ProgramError::MissingRequiredSignature);
+            };
+
+            let vote = decode_instruction_data::<NotarizationVoteInstructionData>(input)?;
+
+            vote_processor::process_notarization_vote(vote_account, authority, vote)
+        }
+        VoteInstruction::Finalize => {
+            let Some(authority) = next_account_info(account_info_iter)?.signer_key() else {
+                return Err(ProgramError::MissingRequiredSignature);
+            };
+
+            let vote = decode_instruction_data::<FinalizationVoteInstructionData>(input)?;
+
+            vote_processor::process_finalization_vote(vote_account, authority, vote)
+        }
+        VoteInstruction::Skip => {
+            let Some(authority) = next_account_info(account_info_iter)?.signer_key() else {
+                return Err(ProgramError::MissingRequiredSignature);
+            };
+
+            let vote = decode_instruction_data::<SkipVoteInstructionData>(input)?;
+
+            vote_processor::process_skip_vote(vote_account, authority, vote)
         }
     }
 }

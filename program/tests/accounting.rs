@@ -116,18 +116,21 @@ async fn test_initialize_vote_account_basic() {
 
     let vote_state: &VoteState = pod_from_bytes(&vote_account.data).unwrap();
 
-    assert_eq!(1, vote_state.version);
-    assert_eq!(node_key.pubkey(), vote_state.node_pubkey);
+    assert_eq!(1, vote_state.version());
+    assert_eq!(node_key.pubkey(), *vote_state.node_pubkey());
     assert_eq!(
         authorized_withdrawer.pubkey(),
-        vote_state.authorized_withdrawer
+        *vote_state.authorized_withdrawer()
     );
-    assert_eq!(commission, vote_state.commission);
-    assert_eq!(authorized_voter.pubkey(), vote_state.authorized_voter.voter);
-    assert_eq!(EPOCH, u64::from(vote_state.authorized_voter.epoch));
-    assert_eq!(None, vote_state.next_authorized_voter);
-    assert_eq!(EpochCredit::default(), vote_state.epoch_credits);
-    assert_eq!(BlockTimestamp::default(), vote_state.last_timestamp);
+    assert_eq!(commission, vote_state.commission());
+    assert_eq!(
+        authorized_voter.pubkey(),
+        *vote_state.authorized_voter().voter()
+    );
+    assert_eq!(EPOCH, vote_state.authorized_voter().epoch());
+    assert_eq!(None, vote_state.next_authorized_voter());
+    assert_eq!(EpochCredit::default(), *vote_state.epoch_credits());
+    assert_eq!(BlockTimestamp::default(), *vote_state.latest_timestamp());
 }
 
 #[tokio::test]
@@ -163,7 +166,7 @@ async fn test_authorize_voter_basic() {
 
     let vote_state: &VoteState = pod_from_bytes(&account.data).unwrap();
 
-    assert!(vote_state.next_authorized_voter.is_none());
+    assert!(vote_state.next_authorized_voter().is_none());
 
     // Issue an Authorize transaction
     let authorize_txn = Transaction::new_signed_with_payer(
@@ -194,7 +197,7 @@ async fn test_authorize_voter_basic() {
     let vote_state: &VoteState = pod_from_bytes(&account.data).unwrap();
     assert_eq!(
         Some(new_authority.pubkey()),
-        vote_state.next_authorized_voter.map(|nav| nav.voter),
+        vote_state.next_authorized_voter().map(|nav| *nav.voter()),
     );
 }
 
@@ -231,7 +234,7 @@ async fn test_authorize_withdrawer_basic() {
 
     let vote_state: &VoteState = pod_from_bytes(&account.data).unwrap();
 
-    assert!(vote_state.next_authorized_voter.is_none());
+    assert!(vote_state.next_authorized_voter().is_none());
 
     // Issue an Authorize transaction
     let authorize_txn = Transaction::new_signed_with_payer(
@@ -260,7 +263,7 @@ async fn test_authorize_withdrawer_basic() {
         .unwrap();
 
     let vote_state: &VoteState = pod_from_bytes(&account.data).unwrap();
-    assert_eq!(new_authority.pubkey(), vote_state.authorized_withdrawer);
+    assert_eq!(new_authority.pubkey(), *vote_state.authorized_withdrawer());
 }
 
 #[tokio::test]
@@ -296,7 +299,7 @@ async fn test_authorize_checked_voter_basic() {
 
     let vote_state: &VoteState = pod_from_bytes(&account.data).unwrap();
 
-    assert!(vote_state.next_authorized_voter.is_none());
+    assert!(vote_state.next_authorized_voter().is_none());
 
     // Issue an Authorize transaction
     let authorize_txn = Transaction::new_signed_with_payer(
@@ -327,7 +330,7 @@ async fn test_authorize_checked_voter_basic() {
     let vote_state: &VoteState = pod_from_bytes(&account.data).unwrap();
     assert_eq!(
         Some(new_authority.pubkey()),
-        vote_state.next_authorized_voter.map(|nav| nav.voter),
+        vote_state.next_authorized_voter().map(|nav| *nav.voter()),
     );
 }
 
@@ -364,7 +367,7 @@ async fn test_authorize_checked_withdrawer_basic() {
 
     let vote_state: &VoteState = pod_from_bytes(&account.data).unwrap();
 
-    assert!(vote_state.next_authorized_voter.is_none());
+    assert!(vote_state.next_authorized_voter().is_none());
 
     // Issue an Authorize transaction
     let authorize_txn = Transaction::new_signed_with_payer(
@@ -393,7 +396,7 @@ async fn test_authorize_checked_withdrawer_basic() {
         .unwrap();
 
     let vote_state: &VoteState = pod_from_bytes(&account.data).unwrap();
-    assert_eq!(new_authority.pubkey(), vote_state.authorized_withdrawer);
+    assert_eq!(new_authority.pubkey(), *vote_state.authorized_withdrawer());
 }
 
 #[tokio::test]
@@ -438,7 +441,7 @@ async fn test_authorize_with_seed_voter_basic() {
 
     let vote_state: &VoteState = pod_from_bytes(&account.data).unwrap();
 
-    assert!(vote_state.next_authorized_voter.is_none());
+    assert!(vote_state.next_authorized_voter().is_none());
 
     // Issue an Authorize transaction
     let authorize_txn = Transaction::new_signed_with_payer(
@@ -471,7 +474,7 @@ async fn test_authorize_with_seed_voter_basic() {
     let vote_state: &VoteState = pod_from_bytes(&account.data).unwrap();
     assert_eq!(
         Some(new_authority.pubkey()),
-        vote_state.next_authorized_voter.map(|nav| nav.voter),
+        vote_state.next_authorized_voter().map(|nav| *nav.voter()),
     );
 }
 
@@ -517,7 +520,7 @@ async fn test_authorize_with_seed_withdrawer_basic() {
 
     let vote_state: &VoteState = pod_from_bytes(&account.data).unwrap();
 
-    assert!(vote_state.next_authorized_voter.is_none());
+    assert!(vote_state.next_authorized_voter().is_none());
 
     // Issue an Authorize transaction
     let authorize_txn = Transaction::new_signed_with_payer(
@@ -548,7 +551,7 @@ async fn test_authorize_with_seed_withdrawer_basic() {
         .unwrap();
 
     let vote_state: &VoteState = pod_from_bytes(&account.data).unwrap();
-    assert_eq!(new_authority.pubkey(), vote_state.authorized_withdrawer);
+    assert_eq!(new_authority.pubkey(), *vote_state.authorized_withdrawer());
 }
 
 #[tokio::test]
@@ -593,7 +596,7 @@ async fn test_authorize_checked_with_seed_voter_basic() {
 
     let vote_state: &VoteState = pod_from_bytes(&account.data).unwrap();
 
-    assert!(vote_state.next_authorized_voter.is_none());
+    assert!(vote_state.next_authorized_voter().is_none());
 
     // Issue an Authorize transaction
     let authorize_txn = Transaction::new_signed_with_payer(
@@ -626,7 +629,7 @@ async fn test_authorize_checked_with_seed_voter_basic() {
     let vote_state: &VoteState = pod_from_bytes(&account.data).unwrap();
     assert_eq!(
         Some(new_authority.pubkey()),
-        vote_state.next_authorized_voter.map(|nav| nav.voter),
+        vote_state.next_authorized_voter().map(|nav| *nav.voter()),
     );
 }
 
@@ -672,7 +675,7 @@ async fn test_authorize_checked_with_seed_withdrawer_basic() {
 
     let vote_state: &VoteState = pod_from_bytes(&account.data).unwrap();
 
-    assert!(vote_state.next_authorized_voter.is_none());
+    assert!(vote_state.next_authorized_voter().is_none());
 
     // Issue an Authorize transaction
     let authorize_txn = Transaction::new_signed_with_payer(
@@ -703,7 +706,7 @@ async fn test_authorize_checked_with_seed_withdrawer_basic() {
         .unwrap();
 
     let vote_state: &VoteState = pod_from_bytes(&account.data).unwrap();
-    assert_eq!(new_authority.pubkey(), vote_state.authorized_withdrawer);
+    assert_eq!(new_authority.pubkey(), *vote_state.authorized_withdrawer());
 }
 
 #[tokio::test]
@@ -739,7 +742,7 @@ async fn test_update_commission_basic() {
         .unwrap();
     let vote_state: &VoteState = pod_from_bytes(&account.data).unwrap();
 
-    assert_eq!(42, vote_state.commission);
+    assert_eq!(42, vote_state.commission());
 
     // Issue an UpdateCommission transaction
     let update_commission_txn = Transaction::new_signed_with_payer(
@@ -768,7 +771,7 @@ async fn test_update_commission_basic() {
         .unwrap();
     let vote_state: &VoteState = pod_from_bytes(&account.data).unwrap();
 
-    assert_eq!(69, vote_state.commission);
+    assert_eq!(69, vote_state.commission());
 }
 
 #[tokio::test]
@@ -806,7 +809,7 @@ async fn test_update_validator_identity_basic() {
 
     let vote_state: &VoteState = pod_from_bytes(&account.data).unwrap();
 
-    assert_eq!(node_key.pubkey(), vote_state.node_pubkey);
+    assert_eq!(node_key.pubkey(), *vote_state.node_pubkey());
 
     // Issue an UpdateValidatorIdentity transaction
     let update_vi_txn = Transaction::new_signed_with_payer(
@@ -835,7 +838,7 @@ async fn test_update_validator_identity_basic() {
         .unwrap();
     let vote_state: &VoteState = pod_from_bytes(&account.data).unwrap();
 
-    assert_eq!(new_node_key.pubkey(), vote_state.node_pubkey);
+    assert_eq!(new_node_key.pubkey(), *vote_state.node_pubkey());
 }
 
 #[tokio::test]
@@ -868,8 +871,8 @@ async fn test_withdraw_basic() {
         .unwrap()
         .unwrap();
 
-    // 2_192_400 is the rent exempt amount
-    assert_eq!(2_192_400 + 1_234_567, account.lamports);
+    // 3138960 is the rent exempt amount
+    assert_eq!(3138960 + 1_234_567, account.lamports);
 
     // Issue a Withdraw transaction
     let withdraw_txn = Transaction::new_signed_with_payer(
@@ -898,7 +901,7 @@ async fn test_withdraw_basic() {
         .unwrap()
         .unwrap();
 
-    assert_eq!(2_192_400, vote_account.lamports);
+    assert_eq!(3138960, vote_account.lamports);
 
     // Ensure that the recipient account has the right balance
     let recipient_account = context
