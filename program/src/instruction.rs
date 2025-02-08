@@ -212,7 +212,7 @@ pub fn skip(vote_pubkey: Pubkey, vote_authority: Pubkey, vote: SkipVote) -> Inst
 
     encode_instruction(
         accounts,
-        VoteInstruction::Finalize,
+        VoteInstruction::Skip,
         &SkipVoteInstructionData {
             version: CURRENT_SKIP_VOTE_VERSION,
             start_slot: PodSlot::from(start_slot),

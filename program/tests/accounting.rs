@@ -6,12 +6,14 @@ use {
         instruction::{self, AuthorityType, InitializeAccountInstructionData},
         processor::process_instruction,
         state::{BlockTimestamp, VoteState},
+        vote::{FinalizationVote, NotarizationVote, SkipVote},
     },
     rand::Rng,
     solana_program::pubkey::Pubkey,
     solana_program_test::*,
     solana_sdk::{
         clock::{Clock, Epoch, Slot},
+        hash::Hash,
         rent::Rent,
         signature::{Keypair, Signer},
         system_instruction,
@@ -875,7 +877,7 @@ async fn test_withdraw_basic() {
     assert_eq!(3_138_960 + 1_234_567, account.lamports);
 
     // Issue a Withdraw transaction
-    let withdraw_txn = Transaction::new_signed_with_payer(
+    let txn = Transaction::new_signed_with_payer(
         &[instruction::withdraw(
             vote_account.pubkey(),
             authorized_withdrawer.pubkey(),
@@ -887,11 +889,7 @@ async fn test_withdraw_basic() {
         context.last_blockhash,
     );
 
-    context
-        .banks_client
-        .process_transaction(withdraw_txn)
-        .await
-        .unwrap();
+    context.banks_client.process_transaction(txn).await.unwrap();
 
     // Ensure that the vote account has the right balance
     let vote_account = context
@@ -912,4 +910,251 @@ async fn test_withdraw_basic() {
         .unwrap();
 
     assert_eq!(1_234_567, recipient_account.lamports);
+}
+
+#[tokio::test]
+async fn test_process_notarization_vote() {
+    let mut context = program_test().start_with_context().await;
+    setup_clock(&mut context, None).await;
+
+    let vote_account = Keypair::new();
+    let node_key = Keypair::new();
+    let authorized_voter = Keypair::new();
+    let authorized_withdrawer = Keypair::new();
+
+    // Create a vote account
+    initialize_vote_account(
+        &mut context,
+        &vote_account,
+        &node_key,
+        &authorized_voter.pubkey(),
+        &authorized_withdrawer.pubkey(),
+        42,
+        Some(1_234_567),
+    )
+    .await;
+
+    // Create a sample notarization vote
+    let slot = 69_u64;
+    let block_id = Hash::new_unique();
+    let replayed_slot = 68_u64;
+    let replayed_bank_hash = Hash::new_unique();
+    let timestamp = 123456789_i64;
+
+    let notarization_vote =
+        NotarizationVote::new(slot, block_id, replayed_slot, replayed_bank_hash, timestamp);
+
+    // Issue a notarization vote transaction
+    let txn = Transaction::new_signed_with_payer(
+        &[instruction::notarize(
+            vote_account.pubkey(),
+            authorized_voter.pubkey(),
+            notarization_vote,
+        )],
+        Some(&context.payer.pubkey()),
+        &[&context.payer, &authorized_voter],
+        context.last_blockhash,
+    );
+
+    context.banks_client.process_transaction(txn).await.unwrap();
+
+    // Get the vote state
+    let vote_account = context
+        .banks_client
+        .get_account(vote_account.pubkey())
+        .await
+        .unwrap()
+        .unwrap();
+
+    let vote_state = bytemuck::from_bytes::<VoteState>(&vote_account.data);
+
+    // Check that the notarization vote matches as expected
+    assert_eq!(&node_key.pubkey(), vote_state.node_pubkey());
+    assert_eq!(
+        &authorized_withdrawer.pubkey(),
+        vote_state.authorized_withdrawer()
+    );
+    assert_eq!(42, vote_state.commission());
+    assert!(vote_state.next_authorized_voter().is_none());
+    assert_eq!(
+        &EpochCredit::new(0_u64, 0_u64, 0_u64),
+        vote_state.epoch_credits()
+    );
+    assert_eq!(slot, u64::from(vote_state.latest_timestamp().slot));
+    assert_eq!(
+        timestamp,
+        i64::from(vote_state.latest_timestamp().timestamp)
+    );
+    assert_eq!(slot, u64::from(vote_state.latest_notarized_slot()));
+    assert_eq!(&block_id, vote_state.latest_notarized_block_id());
+    assert_eq!(0, vote_state.latest_finalized_slot());
+    assert_eq!(&Hash::default(), vote_state.latest_finalized_block_id());
+    assert_eq!(0, vote_state.latest_skip_start_slot());
+    assert_eq!(0, vote_state.latest_skip_end_slot());
+    assert_eq!(replayed_slot, vote_state.replayed_slot());
+    assert_eq!(&replayed_bank_hash, vote_state.replayed_bank_hash());
+}
+
+#[tokio::test]
+async fn test_process_finalization_vote() {
+    let mut context = program_test().start_with_context().await;
+    setup_clock(&mut context, None).await;
+
+    let vote_account = Keypair::new();
+    let node_key = Keypair::new();
+    let authorized_voter = Keypair::new();
+    let authorized_withdrawer = Keypair::new();
+
+    // Create a vote account
+    initialize_vote_account(
+        &mut context,
+        &vote_account,
+        &node_key,
+        &authorized_voter.pubkey(),
+        &authorized_withdrawer.pubkey(),
+        42,
+        Some(1_234_567),
+    )
+    .await;
+
+    // Create a sample finalization vote
+    let slot = 69_u64;
+    let block_id = Hash::new_unique();
+    let replayed_slot = 68_u64;
+    let replayed_bank_hash = Hash::new_unique();
+    let timestamp = 123456789_i64;
+
+    let finalization_vote =
+        FinalizationVote::new(slot, block_id, replayed_slot, replayed_bank_hash, timestamp);
+
+    // Issue a notarization vote transaction
+    let txn = Transaction::new_signed_with_payer(
+        &[instruction::finalize(
+            vote_account.pubkey(),
+            authorized_voter.pubkey(),
+            finalization_vote,
+        )],
+        Some(&context.payer.pubkey()),
+        &[&context.payer, &authorized_voter],
+        context.last_blockhash,
+    );
+
+    context.banks_client.process_transaction(txn).await.unwrap();
+
+    // Get the vote state
+    let vote_account = context
+        .banks_client
+        .get_account(vote_account.pubkey())
+        .await
+        .unwrap()
+        .unwrap();
+
+    let vote_state = bytemuck::from_bytes::<VoteState>(&vote_account.data);
+
+    // Check that the notarization vote matches as expected
+    assert_eq!(&node_key.pubkey(), vote_state.node_pubkey());
+    assert_eq!(
+        &authorized_withdrawer.pubkey(),
+        vote_state.authorized_withdrawer()
+    );
+    assert_eq!(42, vote_state.commission());
+    assert!(vote_state.next_authorized_voter().is_none());
+    assert_eq!(
+        &EpochCredit::new(0_u64, 0_u64, 0_u64),
+        vote_state.epoch_credits()
+    );
+    assert_eq!(slot, u64::from(vote_state.latest_timestamp().slot));
+    assert_eq!(
+        timestamp,
+        i64::from(vote_state.latest_timestamp().timestamp)
+    );
+    assert_eq!(0, vote_state.latest_notarized_slot());
+    assert_eq!(&Hash::default(), vote_state.latest_notarized_block_id());
+    assert_eq!(slot, u64::from(vote_state.latest_finalized_slot()));
+    assert_eq!(&block_id, vote_state.latest_finalized_block_id());
+    assert_eq!(0, vote_state.latest_skip_start_slot());
+    assert_eq!(0, vote_state.latest_skip_end_slot());
+    assert_eq!(replayed_slot, vote_state.replayed_slot());
+    assert_eq!(&replayed_bank_hash, vote_state.replayed_bank_hash());
+}
+
+#[tokio::test]
+async fn test_process_skip_vote() {
+    let mut context = program_test().start_with_context().await;
+    setup_clock(&mut context, None).await;
+
+    let vote_account = Keypair::new();
+    let node_key = Keypair::new();
+    let authorized_voter = Keypair::new();
+    let authorized_withdrawer = Keypair::new();
+
+    // Create a vote account
+    initialize_vote_account(
+        &mut context,
+        &vote_account,
+        &node_key,
+        &authorized_voter.pubkey(),
+        &authorized_withdrawer.pubkey(),
+        42,
+        Some(1_234_567),
+    )
+    .await;
+
+    // Create a sample finalization vote
+    let start_slot = 69_u64;
+    let end_slot = 4269_u64;
+
+    let timestamp = 123456789_i64;
+
+    let skip_vote = SkipVote::new(start_slot, end_slot, timestamp);
+
+    // Issue a notarization vote transaction
+    let txn = Transaction::new_signed_with_payer(
+        &[instruction::skip(
+            vote_account.pubkey(),
+            authorized_voter.pubkey(),
+            skip_vote,
+        )],
+        Some(&context.payer.pubkey()),
+        &[&context.payer, &authorized_voter],
+        context.last_blockhash,
+    );
+
+    context.banks_client.process_transaction(txn).await.unwrap();
+
+    // Get the vote state
+    let vote_account = context
+        .banks_client
+        .get_account(vote_account.pubkey())
+        .await
+        .unwrap()
+        .unwrap();
+
+    let vote_state = bytemuck::from_bytes::<VoteState>(&vote_account.data);
+
+    // Check that the notarization vote matches as expected
+    assert_eq!(&node_key.pubkey(), vote_state.node_pubkey());
+    assert_eq!(
+        &authorized_withdrawer.pubkey(),
+        vote_state.authorized_withdrawer()
+    );
+    assert_eq!(42, vote_state.commission());
+    assert!(vote_state.next_authorized_voter().is_none());
+    assert_eq!(
+        &EpochCredit::new(0_u64, 0_u64, 0_u64),
+        vote_state.epoch_credits()
+    );
+    assert_eq!(end_slot, u64::from(vote_state.latest_timestamp().slot));
+    assert_eq!(
+        timestamp,
+        i64::from(vote_state.latest_timestamp().timestamp)
+    );
+    assert_eq!(0, u64::from(vote_state.latest_notarized_slot()));
+    assert_eq!(&Hash::default(), vote_state.latest_notarized_block_id());
+    assert_eq!(0, u64::from(vote_state.latest_finalized_slot()));
+    assert_eq!(&Hash::default(), vote_state.latest_finalized_block_id());
+    assert_eq!(start_slot, vote_state.latest_skip_start_slot());
+    assert_eq!(end_slot, vote_state.latest_skip_end_slot());
+    assert_eq!(0, vote_state.replayed_slot());
+    assert_eq!(&Hash::default(), vote_state.replayed_bank_hash());
 }
