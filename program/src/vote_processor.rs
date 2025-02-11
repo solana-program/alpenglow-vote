@@ -25,8 +25,8 @@ pub(crate) struct NotarizationVoteInstructionData {
     pub block_id: Hash,
 
     /// The slot of the last replayed block
-    /// Prior to APE this is equal to `slot`
-    pub replayed_slot: PodSlot,
+    /// Only relevant after APE
+    pub _replayed_slot: PodSlot,
 
     /// The bank_hash of the last replayed block
     /// Prior to APE this is the bank hash of `slot`
@@ -51,8 +51,8 @@ pub(crate) struct FinalizationVoteInstructionData {
     pub block_id: Hash,
 
     /// The slot of the last replayed block
-    /// Prior to APE this is equal to `slot`
-    pub replayed_slot: PodSlot,
+    /// Only relevant after APE
+    pub _replayed_slot: PodSlot,
 
     /// The bank_hash of the last replayed block
     /// Prior to APE this is the bank hash of `slot`
