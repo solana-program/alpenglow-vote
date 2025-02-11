@@ -172,7 +172,7 @@ fn replay_bank_hash_checks<T: GetReplayed>(
     // It doesn't make sense to replay blocks that happen after the slot we're voting on.
     let replayed_slot = Slot::from(*inst_data.replayed_slot());
     if replayed_slot > vote_slot {
-        return Err(ProgramError::InvalidInstructionData);
+        Err(ProgramError::InvalidInstructionData)
     }
     // We must have already executed `vote.replayed_slot` and stored the associated bank hash
     // (error out otherwise). Ensure that our bank hash matches what we observe.
