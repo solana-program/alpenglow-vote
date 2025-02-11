@@ -110,18 +110,10 @@ fn version_timestamp_checks(
     }
 }
 
-fn replay_bank_hash_checks(
-    replayed_slot: Slot,
-    replayed_bank_hash: Hash,
-    vote_slot: Slot,
-) -> Result<(), VoteError> {
-    // It doesn't make sense to replay blocks that happen after the slot we're voting on.
-    if replayed_slot > vote_slot {
-        Err(VoteError::ReplaySlotIsAheadOfVoteSlot)
-    }
+fn replay_bank_hash_checks(replayed_slot: Slot, replayed_bank_hash: Hash) -> Result<(), VoteError> {
     // We must have already executed `replayed_slot` and stored the associated bank hash
     // (error out otherwise). Ensure that our bank hash matches what we observe.
-    else if replayed_bank_hash
+    if replayed_bank_hash
         != PodSlotHashes::fetch()
             .map_err(|_| VoteError::MissingSlotHashesSysvar)?
             .get(&replayed_slot)
@@ -154,12 +146,11 @@ pub(crate) fn process_notarization_vote(
     }
 
     // A notarization vote must be strictly greater than the latest slot voted upon.
-    let vote_slot = Slot::from(vote.slot);
-    if vote_slot <= vote_state.latest_notarized_slot() {
+    if Slot::from(vote.slot) <= vote_state.latest_notarized_slot() {
         return Err(VoteError::VoteTooOld.into());
     }
 
-    replay_bank_hash_checks(vote.slot.into(), vote.replayed_bank_hash, vote_slot)?;
+    replay_bank_hash_checks(vote.slot.into(), vote.replayed_bank_hash)?;
 
     vote_state.latest_notarized_slot = vote.slot;
     vote_state.latest_notarized_block_id = vote.block_id;
@@ -199,10 +190,10 @@ pub(crate) fn process_finalization_vote(
     if vote_state.latest_skip_start_slot() <= vote_slot
         && vote_slot <= vote_state.latest_skip_end_slot()
     {
-        return Err(VoteError::VoteTooOld.into());
+        return Err(VoteError::SkipSlotRangeContainsFinalizationVote.into());
     }
 
-    replay_bank_hash_checks(vote.slot.into(), vote.replayed_bank_hash, vote_slot)?;
+    replay_bank_hash_checks(vote.slot.into(), vote.replayed_bank_hash)?;
 
     vote_state.latest_finalized_slot = vote.slot;
     vote_state.latest_finalized_block_id = vote.block_id;

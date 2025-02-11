@@ -138,7 +138,7 @@ pub enum VoteInstruction {
     ///   1. `[SIGNER]` Vote authority
     ///
     ///   Data expected by this instruction:
-    ///     `FinaizationVoteInstructionData`
+    ///     `FinalizationVoteInstructionData`
     Finalize,
 
     /// A skip vote
