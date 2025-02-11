@@ -174,10 +174,9 @@ fn replay_bank_hash_checks<T: GetReplayed>(
     if replayed_slot > vote_slot {
         return Err(ProgramError::InvalidInstructionData);
     }
-
     // We must have already executed `vote.replayed_slot` and stored the associated bank hash
     // (error out otherwise). Ensure that our bank hash matches what we observe.
-    if inst_data.replayed_bank_hash()
+    else if inst_data.replayed_bank_hash()
         != &PodSlotHashes::fetch()?
             .get(&replayed_slot)?
             .ok_or(ProgramError::InvalidInstructionData)?
