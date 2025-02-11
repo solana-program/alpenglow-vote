@@ -873,8 +873,8 @@ async fn test_withdraw_basic() {
         .unwrap()
         .unwrap();
 
-    // 3_138_960 is the rent exempt amount
-    assert_eq!(3_138_960 + 1_234_567, account.lamports);
+    // 3584400 is the rent exempt amount
+    assert_eq!(3584400 + 1_234_567, account.lamports);
 
     // Issue a Withdraw transaction
     let txn = Transaction::new_signed_with_payer(

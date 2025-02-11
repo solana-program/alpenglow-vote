@@ -106,7 +106,7 @@ impl From<SkipVote> for Vote {
 pub struct NotarizationVote {
     slot: Slot,
     block_id: Hash,
-    replayed_slot: Slot,
+    _replayed_slot: Slot,
     replayed_bank_hash: Hash,
     timestamp: UnixTimestamp,
 }
@@ -116,7 +116,7 @@ impl NotarizationVote {
         Self {
             slot: Slot::from(notarization_vote.slot),
             block_id: notarization_vote.block_id,
-            replayed_slot: Slot::from(notarization_vote.replayed_slot),
+            _replayed_slot: 0,
             replayed_bank_hash: notarization_vote.replayed_bank_hash,
             timestamp: UnixTimestamp::from(notarization_vote.timestamp),
         }
@@ -126,14 +126,14 @@ impl NotarizationVote {
     pub fn new(
         slot: Slot,
         block_id: Hash,
-        replayed_slot: Slot,
+        _replayed_slot: Slot,
         replayed_bank_hash: Hash,
         timestamp: UnixTimestamp,
     ) -> Self {
         Self {
             slot,
             block_id,
-            replayed_slot,
+            _replayed_slot,
             replayed_bank_hash,
             timestamp,
         }
@@ -147,11 +147,6 @@ impl NotarizationVote {
     /// The block_id of the notarization slot
     pub fn block_id(&self) -> &Hash {
         &self.block_id
-    }
-
-    /// The latest replayed slot
-    pub fn replayed_slot(&self) -> Slot {
-        self.replayed_slot
     }
 
     /// The bank hash of the latest replayed slot
@@ -170,7 +165,7 @@ impl NotarizationVote {
 pub struct FinalizationVote {
     slot: Slot,
     block_id: Hash,
-    replayed_slot: Slot,
+    _replayed_slot: Slot,
     replayed_bank_hash: Hash,
     timestamp: UnixTimestamp,
 }
@@ -180,7 +175,7 @@ impl FinalizationVote {
         Self {
             slot: Slot::from(finalization_vote.slot),
             block_id: finalization_vote.block_id,
-            replayed_slot: Slot::from(finalization_vote.replayed_slot),
+            _replayed_slot: 0,
             replayed_bank_hash: finalization_vote.replayed_bank_hash,
             timestamp: UnixTimestamp::from(finalization_vote.timestamp),
         }
@@ -190,14 +185,14 @@ impl FinalizationVote {
     pub fn new(
         slot: Slot,
         block_id: Hash,
-        replayed_slot: Slot,
+        _replayed_slot: Slot,
         replayed_bank_hash: Hash,
         timestamp: UnixTimestamp,
     ) -> Self {
         Self {
             slot,
             block_id,
-            replayed_slot,
+            _replayed_slot,
             replayed_bank_hash,
             timestamp,
         }
@@ -211,11 +206,6 @@ impl FinalizationVote {
     /// The block_id of the notarization slot
     pub fn block_id(&self) -> &Hash {
         &self.block_id
-    }
-
-    /// The latest replayed slot
-    pub fn replayed_slot(&self) -> Slot {
-        self.replayed_slot
     }
 
     /// The bank hash of the latest replayed slot

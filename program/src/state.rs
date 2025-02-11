@@ -52,11 +52,17 @@ pub struct VoteState {
     /// The latest notarized block_id
     pub(crate) latest_notarized_block_id: Hash,
 
+    /// The latest notarized bank_hash
+    pub(crate) latest_notarized_bank_hash: Hash,
+
     /// The latest finalized slot
     pub(crate) latest_finalized_slot: PodSlot,
 
     /// The latest finalized block_id
     pub(crate) latest_finalized_block_id: Hash,
+
+    /// The latest finalized bank_hash
+    pub(crate) latest_finalized_bank_hash: Hash,
 
     /// The latest skip range start slot
     pub(crate) latest_skip_start_slot: PodSlot,
@@ -65,10 +71,12 @@ pub struct VoteState {
     pub(crate) latest_skip_end_slot: PodSlot,
 
     /// The slot of the latest replayed block
-    pub(crate) replayed_slot: PodSlot,
+    /// Only relevant after APE
+    pub(crate) _replayed_slot: PodSlot,
 
     /// The bank hash of the latest replayed block
-    pub(crate) replayed_bank_hash: Hash,
+    /// Only relevant after APE
+    pub(crate) _replayed_bank_hash: Hash,
 }
 
 /// Represents the time at which a block was voted on
@@ -173,6 +181,11 @@ impl VoteState {
         &self.latest_notarized_block_id
     }
 
+    /// The latest notarized bank_hash
+    pub fn latest_notarized_bank_hash(&self) -> &Hash {
+        &self.latest_notarized_bank_hash
+    }
+
     /// The latest finalized slot
     pub fn latest_finalized_slot(&self) -> Slot {
         Slot::from(self.latest_finalized_slot)
@@ -183,6 +196,11 @@ impl VoteState {
         &self.latest_finalized_block_id
     }
 
+    /// The latest notarized bank_hash
+    pub fn latest_finalized_bank_hash(&self) -> &Hash {
+        &self.latest_finalized_bank_hash
+    }
+
     /// The latest skip range start slot
     pub fn latest_skip_start_slot(&self) -> Slot {
         Slot::from(self.latest_skip_start_slot)
@@ -191,16 +209,6 @@ impl VoteState {
     /// The latest skip range end slot
     pub fn latest_skip_end_slot(&self) -> Slot {
         Slot::from(self.latest_skip_end_slot)
-    }
-
-    /// The slot of the latest replayed block
-    pub fn replayed_slot(&self) -> Slot {
-        Slot::from(self.replayed_slot)
-    }
-
-    /// The bank hash of the latest replayed block
-    pub fn replayed_bank_hash(&self) -> &Hash {
-        &self.replayed_bank_hash
     }
 
     /// Set the node_pubkey
@@ -248,6 +256,11 @@ impl VoteState {
         self.latest_notarized_block_id = latest_notarized_block_id
     }
 
+    /// Set the latest notarized bank hash
+    pub fn set_latest_notarized_bank_hash(&mut self, latest_notarized_bank_hash: Hash) {
+        self.latest_notarized_bank_hash = latest_notarized_bank_hash
+    }
+
     /// Set the latest finalized slot
     pub fn set_latest_finalized_slot(&mut self, latest_finalized_slot: Slot) {
         self.latest_finalized_slot = PodSlot::from(latest_finalized_slot)
@@ -258,6 +271,11 @@ impl VoteState {
         self.latest_finalized_block_id = latest_finalized_block_id
     }
 
+    /// Set the latest finalized bank hash
+    pub fn set_latest_finalized_bank_hash(&mut self, latest_finalized_bank_hash: Hash) {
+        self.latest_finalized_bank_hash = latest_finalized_bank_hash
+    }
+
     /// Set the latest skip start slot
     pub fn set_latest_skip_start_slot(&mut self, latest_skip_start_slot: Slot) {
         self.latest_skip_start_slot = PodSlot::from(latest_skip_start_slot)
@@ -266,15 +284,5 @@ impl VoteState {
     /// Set the latest skip end slot
     pub fn set_latest_skip_end_slot(&mut self, latest_skip_end_slot: Slot) {
         self.latest_skip_end_slot = PodSlot::from(latest_skip_end_slot)
-    }
-
-    /// Set the latest replayed slot
-    pub fn set_replayed_slot(&mut self, replayed_slot: Slot) {
-        self.replayed_slot = PodSlot::from(replayed_slot)
-    }
-
-    /// Set the latest replayed bank hash
-    pub fn set_replayed_bank_hash(&mut self, replayed_bank_hash: Hash) {
-        self.replayed_bank_hash = replayed_bank_hash
     }
 }
