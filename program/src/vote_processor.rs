@@ -6,24 +6,12 @@ use solana_program::program_error::ProgramError;
 use solana_program::pubkey::Pubkey;
 use solana_program::sysvar::{slot_hashes::PodSlotHashes, Sysvar};
 
+use crate::error::VoteError;
 use crate::state::{BlockTimestamp, PodSlot, PodUnixTimestamp, VoteState};
 
 pub(crate) const CURRENT_NOTARIZE_VOTE_VERSION: u8 = 1;
 pub(crate) const CURRENT_FINALIZE_VOTE_VERSION: u8 = 1;
 pub(crate) const CURRENT_SKIP_VOTE_VERSION: u8 = 1;
-
-trait GetVersion {
-    fn version(&self) -> u8;
-}
-
-trait GetTimestamp {
-    fn timestamp(&self) -> PodUnixTimestamp;
-}
-
-trait GetReplayed {
-    fn replayed_slot(&self) -> &PodSlot;
-    fn replayed_bank_hash(&self) -> &Hash;
-}
 
 /// A notarization vote, the data expected by
 /// `VoteInstruction::Notarize`
@@ -49,28 +37,6 @@ pub(crate) struct NotarizationVoteInstructionData {
 
     /// The timestamp when this vote was created
     pub timestamp: PodUnixTimestamp,
-}
-
-impl GetVersion for NotarizationVoteInstructionData {
-    fn version(&self) -> u8 {
-        self.version
-    }
-}
-
-impl GetTimestamp for NotarizationVoteInstructionData {
-    fn timestamp(&self) -> PodUnixTimestamp {
-        self.timestamp
-    }
-}
-
-impl GetReplayed for NotarizationVoteInstructionData {
-    fn replayed_bank_hash(&self) -> &Hash {
-        &self.replayed_bank_hash
-    }
-
-    fn replayed_slot(&self) -> &PodSlot {
-        &self.replayed_slot
-    }
 }
 
 /// A finalization vote, the data expected by
@@ -99,28 +65,6 @@ pub(crate) struct FinalizationVoteInstructionData {
     pub timestamp: PodUnixTimestamp,
 }
 
-impl GetVersion for FinalizationVoteInstructionData {
-    fn version(&self) -> u8 {
-        self.version
-    }
-}
-
-impl GetTimestamp for FinalizationVoteInstructionData {
-    fn timestamp(&self) -> PodUnixTimestamp {
-        self.timestamp
-    }
-}
-
-impl GetReplayed for FinalizationVoteInstructionData {
-    fn replayed_bank_hash(&self) -> &Hash {
-        &self.replayed_bank_hash
-    }
-
-    fn replayed_slot(&self) -> &PodSlot {
-        &self.replayed_slot
-    }
-}
-
 /// A skip vote, the data expected by
 /// `VoteInstruction::Skip`
 #[repr(C, packed)]
@@ -139,49 +83,52 @@ pub(crate) struct SkipVoteInstructionData {
     pub timestamp: PodUnixTimestamp,
 }
 
-impl GetVersion for SkipVoteInstructionData {
-    fn version(&self) -> u8 {
-        self.version
-    }
-}
-
-impl GetTimestamp for SkipVoteInstructionData {
-    fn timestamp(&self) -> PodUnixTimestamp {
-        self.timestamp
-    }
-}
-
-fn version_timestamp_checks<T: GetVersion + GetTimestamp, const CURRENT_VERSION: u8>(
-    inst_data: &T,
+fn version_timestamp_checks(
+    slot: PodSlot,
+    last_block_timestamp: &BlockTimestamp,
+    version: u8,
+    current_version: u8,
 ) -> Result<(), ProgramError> {
-    if inst_data.version() > CURRENT_VERSION {
-        Err(ProgramError::InvalidInstructionData)
-    } else if i64::from(inst_data.timestamp())
-        >= solana_program::sysvar::clock::Clock::get()?.unix_timestamp
+    let last_slot_i: u64 = last_block_timestamp.slot.into();
+    let last_timestamp_i: i64 = last_block_timestamp.timestamp.into();
+
+    let slot_i: u64 = slot.into();
+    let timestamp_i = solana_program::sysvar::clock::Clock::get()?.unix_timestamp;
+    let timestamp = PodUnixTimestamp::from_primitive(timestamp_i);
+
+    if version != current_version {
+        Err(VoteError::VersionMismatch.into())
+    } else if slot_i < last_slot_i
+        || timestamp_i < last_timestamp_i
+        || (slot == last_block_timestamp.slot
+            && &BlockTimestamp { slot, timestamp } != last_block_timestamp
+            && last_slot_i != 0)
     {
-        Err(ProgramError::InvalidArgument)
+        Err(VoteError::TimestampTooOld.into())
     } else {
         Ok(())
     }
 }
 
-fn replay_bank_hash_checks<T: GetReplayed>(
-    inst_data: &T,
+fn replay_bank_hash_checks(
+    replayed_slot: Slot,
+    replayed_bank_hash: Hash,
     vote_slot: Slot,
-) -> Result<(), ProgramError> {
+) -> Result<(), VoteError> {
     // It doesn't make sense to replay blocks that happen after the slot we're voting on.
-    let replayed_slot = Slot::from(*inst_data.replayed_slot());
     if replayed_slot > vote_slot {
-        Err(ProgramError::InvalidInstructionData)
+        Err(VoteError::ReplaySlotIsAheadOfVoteSlot)
     }
-    // We must have already executed `vote.replayed_slot` and stored the associated bank hash
+    // We must have already executed `replayed_slot` and stored the associated bank hash
     // (error out otherwise). Ensure that our bank hash matches what we observe.
-    else if inst_data.replayed_bank_hash()
-        != &PodSlotHashes::fetch()?
-            .get(&replayed_slot)?
-            .ok_or(ProgramError::InvalidInstructionData)?
+    else if replayed_bank_hash
+        != PodSlotHashes::fetch()
+            .map_err(|_| VoteError::MissingSlotHashesSysvar)?
+            .get(&replayed_slot)
+            .map_err(|_| VoteError::MissingSlotHashesSysvar)?
+            .ok_or(VoteError::SlotHashesMissingKey)?
     {
-        Err(ProgramError::InvalidInstructionData)
+        Err(VoteError::ReplayBankHashMismatch)
     } else {
         Ok(())
     }
@@ -192,10 +139,15 @@ pub(crate) fn process_notarization_vote(
     vote_authority: &Pubkey,
     vote: &NotarizationVoteInstructionData,
 ) -> Result<(), ProgramError> {
-    version_timestamp_checks::<_, CURRENT_NOTARIZE_VOTE_VERSION>(vote)?;
-
     let mut vote_state = vote_account.data.borrow_mut();
     let vote_state = bytemuck::from_bytes_mut::<VoteState>(&mut vote_state);
+
+    version_timestamp_checks(
+        vote.slot,
+        &vote_state.latest_timestamp,
+        vote.version,
+        CURRENT_NOTARIZE_VOTE_VERSION,
+    )?;
 
     if vote_state.authorized_voter.voter != *vote_authority {
         return Err(ProgramError::MissingRequiredSignature);
@@ -203,16 +155,15 @@ pub(crate) fn process_notarization_vote(
 
     // A notarization vote must be strictly greater than the latest slot voted upon.
     let vote_slot = Slot::from(vote.slot);
-    if vote_slot
-        <= vote_state
-            .latest_finalized_slot()
-            .max(vote_state.latest_notarized_slot())
-            .max(vote_state.latest_skip_end_slot())
-    {
+    if vote_slot <= vote_state.latest_notarized_slot() {
         return Err(ProgramError::InvalidInstructionData);
     }
 
-    replay_bank_hash_checks(vote, vote_slot)?;
+    replay_bank_hash_checks(
+        vote.replayed_slot.into(),
+        vote.replayed_bank_hash,
+        vote_slot,
+    )?;
 
     vote_state.latest_notarized_slot = vote.slot;
     vote_state.latest_notarized_block_id = vote.block_id;
@@ -232,29 +183,36 @@ pub(crate) fn process_finalization_vote(
     vote_authority: &Pubkey,
     vote: &FinalizationVoteInstructionData,
 ) -> Result<(), ProgramError> {
-    version_timestamp_checks::<_, CURRENT_FINALIZE_VOTE_VERSION>(vote)?;
-
     let mut vote_state = vote_account.data.borrow_mut();
     let vote_state = bytemuck::from_bytes_mut::<VoteState>(&mut vote_state);
+
+    version_timestamp_checks(
+        vote.slot,
+        &vote_state.latest_timestamp,
+        vote.version,
+        CURRENT_FINALIZE_VOTE_VERSION,
+    )?;
 
     if vote_state.authorized_voter.voter != *vote_authority {
         return Err(ProgramError::MissingRequiredSignature);
     }
 
-    // (1) Only accept finalization votes on slots strictly greater than the latest_finalized_slot.
-    // Re. the equality case - it makes no sense to double-finalize vote.
-    //
-    // (2) Similarly, only accept finalization votes on slots strictly greater than the
-    // latest_skip_end_slot. Re. the equality case - validators cannot issue a skip and a finalize
-    // for the same slot.
     let vote_slot = Slot::from(vote.slot);
-    if vote_slot <= vote_state.latest_finalized_slot()
-        || vote_slot <= vote_state.latest_skip_end_slot()
-    {
-        return Err(ProgramError::InvalidInstructionData);
+    if vote_slot <= vote_state.latest_finalized_slot() {
+        return Err(VoteError::FinalizationVoteNotMonotonic.into());
     }
 
-    replay_bank_hash_checks(vote, vote_slot)?;
+    if vote_state.latest_skip_start_slot() <= vote_slot
+        && vote_slot <= vote_state.latest_skip_end_slot()
+    {
+        return Err(VoteError::SkipSlotRangeContainsNonSkipVote.into());
+    }
+
+    replay_bank_hash_checks(
+        vote.replayed_slot.into(),
+        vote.replayed_bank_hash,
+        vote_slot,
+    )?;
 
     vote_state.latest_finalized_slot = vote.slot;
     vote_state.latest_finalized_block_id = vote.block_id;
@@ -274,28 +232,30 @@ pub(crate) fn process_skip_vote(
     vote_authority: &Pubkey,
     vote: &SkipVoteInstructionData,
 ) -> Result<(), ProgramError> {
-    version_timestamp_checks::<_, CURRENT_SKIP_VOTE_VERSION>(vote)?;
-
     let mut vote_state = vote_account.data.borrow_mut();
     let vote_state = bytemuck::from_bytes_mut::<VoteState>(&mut vote_state);
+
+    version_timestamp_checks(
+        vote.end_slot,
+        &vote_state.latest_timestamp,
+        vote.version,
+        CURRENT_SKIP_VOTE_VERSION,
+    )?;
 
     if vote_state.authorized_voter.voter != *vote_authority {
         return Err(ProgramError::MissingRequiredSignature);
     }
 
-    // (1) Skips must be of the form (vote.start_slot, vote.end_slot) = (t, t + N) where t, N are
-    // integers >= 0.
-    //
-    // (2) Skip vote ranges must happen strictly after finalization slot votes.
-    //
-    // (3) Skip vote ranges must happen at the same time or after notarization slot votes.
     let (vote_start_slot, vote_end_slot) = (Slot::from(vote.start_slot), Slot::from(vote.end_slot));
 
-    if vote_end_slot < vote_start_slot
-        || vote_start_slot <= vote_state.latest_finalized_slot()
-        || vote_start_slot < vote_state.latest_notarized_slot()
+    if vote_end_slot < vote_start_slot {
+        return Err(VoteError::SkipEndSlotLowerThanSkipStartSlot.into());
+    }
+
+    if vote_start_slot <= vote_state.latest_finalized_slot()
+        && vote_state.latest_finalized_slot() <= vote_end_slot
     {
-        return Err(ProgramError::InvalidInstructionData);
+        return Err(VoteError::SkipSlotRangeContainsNonSkipVote.into());
     }
 
     vote_state.latest_skip_start_slot = vote.start_slot;
