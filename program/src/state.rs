@@ -61,7 +61,7 @@ pub struct VoteState {
     /// The latest skip range start slot
     pub(crate) latest_skip_start_slot: PodSlot,
 
-    /// The latest skip range end slot
+    /// The latest skip range end slot (inclusive)
     pub(crate) latest_skip_end_slot: PodSlot,
 
     /// The slot of the latest replayed block

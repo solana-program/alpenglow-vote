@@ -913,7 +913,7 @@ async fn test_withdraw_basic() {
 }
 
 #[tokio::test]
-async fn test_process_notarization_vote() {
+async fn test_process_notarization_vote_basic() {
     let mut context = program_test().start_with_context().await;
     setup_clock(&mut context, None).await;
 
@@ -996,7 +996,7 @@ async fn test_process_notarization_vote() {
 }
 
 #[tokio::test]
-async fn test_process_finalization_vote() {
+async fn test_process_finalization_vote_basic() {
     let mut context = program_test().start_with_context().await;
     setup_clock(&mut context, None).await;
 
@@ -1027,7 +1027,7 @@ async fn test_process_finalization_vote() {
     let finalization_vote =
         FinalizationVote::new(slot, block_id, replayed_slot, replayed_bank_hash, timestamp);
 
-    // Issue a notarization vote transaction
+    // Issue a finalization vote transaction
     let txn = Transaction::new_signed_with_payer(
         &[instruction::finalize(
             vote_account.pubkey(),
@@ -1051,7 +1051,7 @@ async fn test_process_finalization_vote() {
 
     let vote_state = bytemuck::from_bytes::<VoteState>(&vote_account.data);
 
-    // Check that the notarization vote matches as expected
+    // Check that the finalization vote matches as expected
     assert_eq!(&node_key.pubkey(), vote_state.node_pubkey());
     assert_eq!(
         &authorized_withdrawer.pubkey(),
@@ -1079,7 +1079,7 @@ async fn test_process_finalization_vote() {
 }
 
 #[tokio::test]
-async fn test_process_skip_vote() {
+async fn test_process_skip_vote_basic() {
     let mut context = program_test().start_with_context().await;
     setup_clock(&mut context, None).await;
 
@@ -1103,12 +1103,10 @@ async fn test_process_skip_vote() {
     // Create a sample finalization vote
     let start_slot = 69_u64;
     let end_slot = 4269_u64;
-
     let timestamp = 123456789_i64;
-
     let skip_vote = SkipVote::new(start_slot, end_slot, timestamp);
 
-    // Issue a notarization vote transaction
+    // Issue a skip vote transaction
     let txn = Transaction::new_signed_with_payer(
         &[instruction::skip(
             vote_account.pubkey(),
@@ -1132,7 +1130,7 @@ async fn test_process_skip_vote() {
 
     let vote_state = bytemuck::from_bytes::<VoteState>(&vote_account.data);
 
-    // Check that the notarization vote matches as expected
+    // Check that the skip vote matches as expected
     assert_eq!(&node_key.pubkey(), vote_state.node_pubkey());
     assert_eq!(
         &authorized_withdrawer.pubkey(),
