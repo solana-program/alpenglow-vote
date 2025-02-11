@@ -29,8 +29,8 @@ pub enum VoteError {
     #[error("Invalid vote authorize")]
     InvalidAuthorizeType,
 
-    /// Missing SlotHashes sysvar
-    #[error("Missing SlotHashes sysvar")]
+    /// Missing slot hashes sysvar
+    #[error("Missing slot hashes sysvar")]
     MissingSlotHashesSysvar,
 
     /// Replayed slot is ahead of vote slot
