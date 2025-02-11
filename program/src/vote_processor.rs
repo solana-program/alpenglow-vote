@@ -156,7 +156,7 @@ pub(crate) fn process_notarization_vote(
     // A notarization vote must be strictly greater than the latest slot voted upon.
     let vote_slot = Slot::from(vote.slot);
     if vote_slot <= vote_state.latest_notarized_slot() {
-        return Err(ProgramError::InvalidInstructionData);
+        return Err(VoteError::VoteTooOld.into());
     }
 
     replay_bank_hash_checks(
@@ -199,13 +199,13 @@ pub(crate) fn process_finalization_vote(
 
     let vote_slot = Slot::from(vote.slot);
     if vote_slot <= vote_state.latest_finalized_slot() {
-        return Err(VoteError::FinalizationVoteNotMonotonic.into());
+        return Err(VoteError::VoteTooOld.into());
     }
 
     if vote_state.latest_skip_start_slot() <= vote_slot
         && vote_slot <= vote_state.latest_skip_end_slot()
     {
-        return Err(VoteError::SkipSlotRangeContainsNonSkipVote.into());
+        return Err(VoteError::VoteTooOld.into());
     }
 
     replay_bank_hash_checks(
@@ -255,7 +255,7 @@ pub(crate) fn process_skip_vote(
     if vote_start_slot <= vote_state.latest_finalized_slot()
         && vote_state.latest_finalized_slot() <= vote_end_slot
     {
-        return Err(VoteError::SkipSlotRangeContainsNonSkipVote.into());
+        return Err(VoteError::SkipSlotRangeContainsFinalizationVote.into());
     }
 
     vote_state.latest_skip_start_slot = vote.start_slot;

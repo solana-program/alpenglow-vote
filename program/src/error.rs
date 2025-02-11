@@ -17,10 +17,6 @@ pub enum VoteError {
     #[error("Cannot update commission at this point in the epoch")]
     CommissionUpdateTooLate,
 
-    /// Finalization vote isn't monotonic
-    #[error("Finalization vote isn't monotonic")]
-    FinalizationVoteNotMonotonic,
-
     /// Invalid instruction
     #[error("Invalid instruction")]
     InvalidInstruction,
@@ -45,12 +41,12 @@ pub enum VoteError {
     #[error("Skip end slot is lower than the skip start slot")]
     SkipEndSlotLowerThanSkipStartSlot,
 
-    /// Skip slot range contains non-skip vote
-    #[error("Skip slot range contains non-skip vote")]
-    SkipSlotRangeContainsNonSkipVote,
+    /// Skip slot range contains finalization vote
+    #[error("Skip slot range contains finalization vote")]
+    SkipSlotRangeContainsFinalizationVote,
 
-    /// SlotHashes is missing the replayed slot key
-    #[error("SlotHashes is missing the replayed slot key")]
+    /// Slot hashes is missing the replayed slot key
+    #[error("Slot hashes is missing the replayed slot key")]
     SlotHashesMissingKey,
 
     /// Timestamp is too old
@@ -60,6 +56,10 @@ pub enum VoteError {
     /// Version mismatch
     #[error("Version mismatch")]
     VersionMismatch,
+
+    /// Vote too old (notarization / finalization votes aren't monotonic)
+    #[error("Notarization / finalization vote isn't monotonic")]
+    VoteTooOld,
 }
 
 impl From<VoteError> for ProgramError {
