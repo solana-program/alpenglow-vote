@@ -159,21 +159,15 @@ pub(crate) fn process_notarization_vote(
         return Err(VoteError::VoteTooOld.into());
     }
 
-    replay_bank_hash_checks(
-        vote.replayed_slot.into(),
-        vote.replayed_bank_hash,
-        vote_slot,
-    )?;
+    replay_bank_hash_checks(vote.slot.into(), vote.replayed_bank_hash, vote_slot)?;
 
     vote_state.latest_notarized_slot = vote.slot;
     vote_state.latest_notarized_block_id = vote.block_id;
+    vote_state.latest_notarized_bank_hash = vote.replayed_bank_hash;
     vote_state.latest_timestamp = BlockTimestamp {
         slot: vote.slot,
         timestamp: vote.timestamp,
     };
-
-    vote_state.replayed_slot = vote.replayed_slot;
-    vote_state.replayed_bank_hash = vote.replayed_bank_hash;
 
     Ok(())
 }
@@ -208,21 +202,15 @@ pub(crate) fn process_finalization_vote(
         return Err(VoteError::VoteTooOld.into());
     }
 
-    replay_bank_hash_checks(
-        vote.replayed_slot.into(),
-        vote.replayed_bank_hash,
-        vote_slot,
-    )?;
+    replay_bank_hash_checks(vote.slot.into(), vote.replayed_bank_hash, vote_slot)?;
 
     vote_state.latest_finalized_slot = vote.slot;
     vote_state.latest_finalized_block_id = vote.block_id;
+    vote_state.latest_finalized_bank_hash = vote.replayed_bank_hash;
     vote_state.latest_timestamp = BlockTimestamp {
         slot: vote.slot,
         timestamp: vote.timestamp,
     };
-
-    vote_state.replayed_slot = vote.replayed_slot;
-    vote_state.replayed_bank_hash = vote.replayed_bank_hash;
 
     Ok(())
 }

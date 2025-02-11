@@ -899,7 +899,7 @@ async fn test_withdraw_basic() {
         .unwrap()
         .unwrap();
 
-    assert_eq!(3_138_960, vote_account.lamports);
+    assert_eq!(3_584_400, vote_account.lamports);
 
     // Ensure that the recipient account has the right balance
     let recipient_account = context
@@ -991,8 +991,6 @@ async fn test_process_notarization_vote_basic() {
     assert_eq!(&Hash::default(), vote_state.latest_finalized_block_id());
     assert_eq!(0, vote_state.latest_skip_start_slot());
     assert_eq!(0, vote_state.latest_skip_end_slot());
-    assert_eq!(replayed_slot, vote_state.replayed_slot());
-    assert_eq!(&replayed_bank_hash, vote_state.replayed_bank_hash());
 }
 
 #[tokio::test]
@@ -1074,8 +1072,6 @@ async fn test_process_finalization_vote_basic() {
     assert_eq!(&block_id, vote_state.latest_finalized_block_id());
     assert_eq!(0, vote_state.latest_skip_start_slot());
     assert_eq!(0, vote_state.latest_skip_end_slot());
-    assert_eq!(replayed_slot, vote_state.replayed_slot());
-    assert_eq!(&replayed_bank_hash, vote_state.replayed_bank_hash());
 }
 
 #[tokio::test]
@@ -1153,6 +1149,4 @@ async fn test_process_skip_vote_basic() {
     assert_eq!(&Hash::default(), vote_state.latest_finalized_block_id());
     assert_eq!(start_slot, vote_state.latest_skip_start_slot());
     assert_eq!(end_slot, vote_state.latest_skip_end_slot());
-    assert_eq!(0, vote_state.replayed_slot());
-    assert_eq!(&Hash::default(), vote_state.replayed_bank_hash());
 }
