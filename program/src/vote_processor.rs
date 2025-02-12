@@ -112,7 +112,7 @@ fn replay_bank_hash_checks(replayed_slot: Slot, replayed_bank_hash: Hash) -> Res
     if replayed_bank_hash
         != PodSlotHashes::fetch()
             .map_err(|_| VoteError::MissingSlotHashesSysvar)?
-            .get(&replayed_slot.into())
+            .get(&replayed_slot)
             .map_err(|_| VoteError::MissingSlotHashesSysvar)?
             .ok_or(VoteError::SlotHashesMissingKey)?
     {
