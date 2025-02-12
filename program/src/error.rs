@@ -29,10 +29,6 @@ pub enum VoteError {
     #[error("Missing slot hashes sysvar")]
     MissingSlotHashesSysvar,
 
-    /// Replayed slot is ahead of vote slot
-    #[error("Replayed slot is ahead of vote slot")]
-    ReplaySlotIsAheadOfVoteSlot,
-
     /// Replay bank hash mismatch
     #[error("Replay bank hash mismatch")]
     ReplayBankHashMismatch,

@@ -4,6 +4,7 @@ use bytemuck::{Pod, Zeroable};
 use solana_program::account_info::AccountInfo;
 use solana_program::clock::Clock;
 use solana_program::clock::Slot;
+use solana_program::clock::UnixTimestamp;
 use solana_program::hash::Hash;
 use solana_program::program_error::ProgramError;
 use solana_program::pubkey::Pubkey;
@@ -87,6 +88,16 @@ pub struct BlockTimestamp {
     pub slot: PodSlot,
     /// Unix timestamp for when the vote was cast
     pub timestamp: PodUnixTimestamp,
+}
+
+impl BlockTimestamp {
+    pub(crate) fn slot(&self) -> Slot {
+        self.slot.into()
+    }
+
+    pub(crate) fn timestamp(&self) -> UnixTimestamp {
+        self.timestamp.into()
+    }
 }
 
 impl VoteState {

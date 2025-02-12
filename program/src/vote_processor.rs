@@ -1,10 +1,11 @@
 use bytemuck::{Pod, Zeroable};
 use solana_program::account_info::AccountInfo;
 use solana_program::clock::Slot;
+use solana_program::clock::UnixTimestamp;
 use solana_program::hash::Hash;
 use solana_program::program_error::ProgramError;
 use solana_program::pubkey::Pubkey;
-use solana_program::sysvar::{slot_hashes::PodSlotHashes, Sysvar};
+use solana_program::sysvar::slot_hashes::PodSlotHashes;
 
 use crate::error::VoteError;
 use crate::state::{BlockTimestamp, PodSlot, PodUnixTimestamp, VoteState};
@@ -84,25 +85,20 @@ pub(crate) struct SkipVoteInstructionData {
 }
 
 fn version_timestamp_checks(
-    slot: PodSlot,
+    slot: Slot,
+    timestamp: UnixTimestamp,
     last_block_timestamp: &BlockTimestamp,
     version: u8,
     current_version: u8,
 ) -> Result<(), ProgramError> {
-    let last_slot_i: u64 = last_block_timestamp.slot.into();
-    let last_timestamp_i: i64 = last_block_timestamp.timestamp.into();
-
-    let slot_i: u64 = slot.into();
-    let timestamp_i = solana_program::sysvar::clock::Clock::get()?.unix_timestamp;
-    let timestamp = PodUnixTimestamp::from_primitive(timestamp_i);
+    let last_slot = last_block_timestamp.slot();
+    let last_timestamp = last_block_timestamp.timestamp();
 
     if version != current_version {
         Err(VoteError::VersionMismatch.into())
-    } else if slot_i < last_slot_i
-        || timestamp_i < last_timestamp_i
-        || (slot == last_block_timestamp.slot
-            && &BlockTimestamp { slot, timestamp } != last_block_timestamp
-            && last_slot_i != 0)
+    } else if slot < last_slot
+        || timestamp < last_timestamp
+        || (slot == last_slot && timestamp != last_timestamp && last_slot != 0)
     {
         Err(VoteError::TimestampTooOld.into())
     } else {
@@ -116,7 +112,7 @@ fn replay_bank_hash_checks(replayed_slot: Slot, replayed_bank_hash: Hash) -> Res
     if replayed_bank_hash
         != PodSlotHashes::fetch()
             .map_err(|_| VoteError::MissingSlotHashesSysvar)?
-            .get(&replayed_slot)
+            .get(&replayed_slot.into())
             .map_err(|_| VoteError::MissingSlotHashesSysvar)?
             .ok_or(VoteError::SlotHashesMissingKey)?
     {
@@ -134,8 +130,11 @@ pub(crate) fn process_notarization_vote(
     let mut vote_state = vote_account.data.borrow_mut();
     let vote_state = bytemuck::from_bytes_mut::<VoteState>(&mut vote_state);
 
+    let vote_slot = vote.slot.into();
+
     version_timestamp_checks(
-        vote.slot,
+        vote_slot,
+        vote.timestamp.into(),
         &vote_state.latest_timestamp,
         vote.version,
         CURRENT_NOTARIZE_VOTE_VERSION,
@@ -145,12 +144,12 @@ pub(crate) fn process_notarization_vote(
         return Err(ProgramError::MissingRequiredSignature);
     }
 
-    // A notarization vote must be strictly greater than the latest slot voted upon.
-    if Slot::from(vote.slot) <= vote_state.latest_notarized_slot() {
+    // Notarization votes must be strictly increasing
+    if vote_slot <= vote_state.latest_notarized_slot() {
         return Err(VoteError::VoteTooOld.into());
     }
 
-    replay_bank_hash_checks(vote.slot.into(), vote.replayed_bank_hash)?;
+    replay_bank_hash_checks(vote_slot, vote.replayed_bank_hash)?;
 
     vote_state.latest_notarized_slot = vote.slot;
     vote_state.latest_notarized_block_id = vote.block_id;
@@ -171,8 +170,11 @@ pub(crate) fn process_finalization_vote(
     let mut vote_state = vote_account.data.borrow_mut();
     let vote_state = bytemuck::from_bytes_mut::<VoteState>(&mut vote_state);
 
+    let vote_slot = vote.slot.into();
+
     version_timestamp_checks(
-        vote.slot,
+        vote_slot,
+        vote.timestamp.into(),
         &vote_state.latest_timestamp,
         vote.version,
         CURRENT_FINALIZE_VOTE_VERSION,
@@ -182,7 +184,6 @@ pub(crate) fn process_finalization_vote(
         return Err(ProgramError::MissingRequiredSignature);
     }
 
-    let vote_slot = Slot::from(vote.slot);
     if vote_slot <= vote_state.latest_finalized_slot() {
         return Err(VoteError::VoteTooOld.into());
     }
@@ -193,7 +194,7 @@ pub(crate) fn process_finalization_vote(
         return Err(VoteError::SkipSlotRangeContainsFinalizationVote.into());
     }
 
-    replay_bank_hash_checks(vote.slot.into(), vote.replayed_bank_hash)?;
+    replay_bank_hash_checks(vote_slot, vote.replayed_bank_hash)?;
 
     vote_state.latest_finalized_slot = vote.slot;
     vote_state.latest_finalized_block_id = vote.block_id;
@@ -215,7 +216,8 @@ pub(crate) fn process_skip_vote(
     let vote_state = bytemuck::from_bytes_mut::<VoteState>(&mut vote_state);
 
     version_timestamp_checks(
-        vote.end_slot,
+        vote.end_slot.into(),
+        vote.timestamp.into(),
         &vote_state.latest_timestamp,
         vote.version,
         CURRENT_SKIP_VOTE_VERSION,
