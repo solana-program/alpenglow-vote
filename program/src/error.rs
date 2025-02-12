@@ -24,6 +24,38 @@ pub enum VoteError {
     /// Invalid Vote Authorize enum
     #[error("Invalid vote authorize")]
     InvalidAuthorizeType,
+
+    /// Missing slot hashes sysvar
+    #[error("Missing slot hashes sysvar")]
+    MissingSlotHashesSysvar,
+
+    /// Replay bank hash mismatch
+    #[error("Replay bank hash mismatch")]
+    ReplayBankHashMismatch,
+
+    /// Skip end slot is lower than the skip start slot
+    #[error("Skip end slot is lower than the skip start slot")]
+    SkipEndSlotLowerThanSkipStartSlot,
+
+    /// Skip slot range contains finalization vote
+    #[error("Skip slot range contains finalization vote")]
+    SkipSlotRangeContainsFinalizationVote,
+
+    /// Slot hashes is missing the replayed slot key
+    #[error("Slot hashes is missing the replayed slot key")]
+    SlotHashesMissingKey,
+
+    /// Timestamp is too old
+    #[error("Timestamp is too old")]
+    TimestampTooOld,
+
+    /// Version mismatch
+    #[error("Version mismatch")]
+    VersionMismatch,
+
+    /// Vote too old (notarization / finalization votes aren't monotonic)
+    #[error("Notarization / finalization vote isn't monotonic")]
+    VoteTooOld,
 }
 
 impl From<VoteError> for ProgramError {

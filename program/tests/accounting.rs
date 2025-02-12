@@ -28,7 +28,7 @@ fn program_test() -> ProgramTest {
     )
 }
 
-const SLOT: Slot = 53084024;
+const SLOT: Slot = 53_084_024;
 const EPOCH: Epoch = 100;
 
 async fn setup_clock(context: &mut ProgramTestContext, slot: Option<Slot>) {
@@ -872,10 +872,10 @@ async fn test_withdraw_basic() {
         .unwrap();
 
     // 3584400 is the rent exempt amount
-    assert_eq!(3584400 + 1_234_567, account.lamports);
+    assert_eq!(3_584_400 + 1_234_567, account.lamports);
 
     // Issue a Withdraw transaction
-    let withdraw_txn = Transaction::new_signed_with_payer(
+    let txn = Transaction::new_signed_with_payer(
         &[instruction::withdraw(
             vote_account.pubkey(),
             authorized_withdrawer.pubkey(),
@@ -887,11 +887,7 @@ async fn test_withdraw_basic() {
         context.last_blockhash,
     );
 
-    context
-        .banks_client
-        .process_transaction(withdraw_txn)
-        .await
-        .unwrap();
+    context.banks_client.process_transaction(txn).await.unwrap();
 
     // Ensure that the vote account has the right balance
     let vote_account = context
@@ -901,7 +897,7 @@ async fn test_withdraw_basic() {
         .unwrap()
         .unwrap();
 
-    assert_eq!(3584400, vote_account.lamports);
+    assert_eq!(3_584_400, vote_account.lamports);
 
     // Ensure that the recipient account has the right balance
     let recipient_account = context
