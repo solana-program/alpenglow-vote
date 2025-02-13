@@ -25,6 +25,10 @@ pub enum VoteError {
     #[error("Invalid vote authorize")]
     InvalidAuthorizeType,
 
+    /// Missing epoch schedule sysvar
+    #[error("Missing epoch schedule sysvar")]
+    MissingEpochScheduleSysvar,
+
     /// Missing slot hashes sysvar
     #[error("Missing slot hashes sysvar")]
     MissingSlotHashesSysvar,
@@ -32,6 +36,10 @@ pub enum VoteError {
     /// Replay bank hash mismatch
     #[error("Replay bank hash mismatch")]
     ReplayBankHashMismatch,
+
+    /// Skip end slot exceeds clock slot
+    #[error("Skip end slot exceeds clock slot")]
+    SkipEndSlotExceedsCurrentSlot,
 
     /// Skip end slot is lower than the skip start slot
     #[error("Skip end slot is lower than the skip start slot")]
@@ -48,6 +56,10 @@ pub enum VoteError {
     /// Timestamp is too old
     #[error("Timestamp is too old")]
     TimestampTooOld,
+
+    /// Unreachable error
+    #[error("Unreachable error")]
+    Unreachable,
 
     /// Version mismatch
     #[error("Version mismatch")]
