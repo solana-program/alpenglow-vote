@@ -45,7 +45,7 @@ pub struct VoteState {
     pub(crate) epoch_credits: EpochCredit,
 
     /// Most recent timestamp submitted with a vote
-    pub(crate) latest_timestamp: BlockTimestamp,
+    pub(crate) latest_timestamp: PodUnixTimestamp,
 
     /// The latest notarized slot
     pub(crate) latest_notarized_slot: PodSlot,
@@ -78,26 +78,6 @@ pub struct VoteState {
     /// The bank hash of the latest replayed block
     /// Only relevant after APE
     pub(crate) _replayed_bank_hash: Hash,
-}
-
-/// Represents the time at which a block was voted on
-#[repr(C)]
-#[derive(Clone, Copy, Debug, Pod, Zeroable, Default, PartialEq)]
-pub struct BlockTimestamp {
-    /// Slot of the voted on block
-    pub slot: PodSlot,
-    /// Unix timestamp for when the vote was cast
-    pub timestamp: PodUnixTimestamp,
-}
-
-impl BlockTimestamp {
-    pub(crate) fn slot(&self) -> Slot {
-        self.slot.into()
-    }
-
-    pub(crate) fn timestamp(&self) -> UnixTimestamp {
-        self.timestamp.into()
-    }
 }
 
 impl VoteState {
@@ -178,8 +158,8 @@ impl VoteState {
     }
 
     /// Most recent timestamp submitted with a vote
-    pub fn latest_timestamp(&self) -> &BlockTimestamp {
-        &self.latest_timestamp
+    pub fn latest_timestamp(&self) -> UnixTimestamp {
+        UnixTimestamp::from(self.latest_timestamp)
     }
 
     /// The latest notarized slot
@@ -253,8 +233,8 @@ impl VoteState {
     }
 
     /// Set the latest timestamp
-    pub fn set_latest_timestamp(&mut self, latest_timestamp: BlockTimestamp) {
-        self.latest_timestamp = latest_timestamp
+    pub fn set_latest_timestamp(&mut self, latest_timestamp: UnixTimestamp) {
+        self.latest_timestamp = PodUnixTimestamp::from(latest_timestamp)
     }
 
     /// Set the latest notarized slot

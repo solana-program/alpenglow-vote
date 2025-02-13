@@ -5,13 +5,13 @@ use {
         accounting::EpochCredit,
         instruction::{self, AuthorityType, InitializeAccountInstructionData},
         processor::process_instruction,
-        state::{BlockTimestamp, VoteState},
+        state::VoteState,
     },
     rand::Rng,
     solana_program::pubkey::Pubkey,
     solana_program_test::*,
     solana_sdk::{
-        clock::{Clock, Epoch, Slot},
+        clock::{Clock, Epoch, Slot, UnixTimestamp},
         rent::Rent,
         signature::{Keypair, Signer},
         system_instruction,
@@ -130,7 +130,7 @@ async fn test_initialize_vote_account_basic() {
     assert_eq!(EPOCH, vote_state.authorized_voter().epoch());
     assert_eq!(None, vote_state.next_authorized_voter());
     assert_eq!(EpochCredit::default(), *vote_state.epoch_credits());
-    assert_eq!(BlockTimestamp::default(), *vote_state.latest_timestamp());
+    assert_eq!(UnixTimestamp::from(0), vote_state.latest_timestamp());
 }
 
 #[tokio::test]
