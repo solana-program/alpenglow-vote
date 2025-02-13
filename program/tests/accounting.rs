@@ -5,13 +5,13 @@ use {
         accounting::EpochCredit,
         instruction::{self, AuthorityType, InitializeAccountInstructionData},
         processor::process_instruction,
-        state::{BlockTimestamp, VoteState},
+        state::VoteState,
     },
     rand::Rng,
     solana_program::pubkey::Pubkey,
     solana_program_test::*,
     solana_sdk::{
-        clock::{Clock, Epoch, Slot},
+        clock::{Clock, Epoch, Slot, UnixTimestamp},
         rent::Rent,
         signature::{Keypair, Signer},
         system_instruction,
@@ -130,7 +130,7 @@ async fn test_initialize_vote_account_basic() {
     assert_eq!(EPOCH, vote_state.authorized_voter().epoch());
     assert_eq!(None, vote_state.next_authorized_voter());
     assert_eq!(EpochCredit::default(), *vote_state.epoch_credits());
-    assert_eq!(BlockTimestamp::default(), *vote_state.latest_timestamp());
+    assert_eq!(UnixTimestamp::from(0), vote_state.latest_timestamp());
 }
 
 #[tokio::test]
@@ -871,8 +871,8 @@ async fn test_withdraw_basic() {
         .unwrap()
         .unwrap();
 
-    // 3584400 is the rent exempt amount
-    assert_eq!(3_584_400 + 1_234_567, account.lamports);
+    let rent_exempt_amount = 3_528_720;
+    assert_eq!(rent_exempt_amount + 1_234_567, account.lamports);
 
     // Issue a Withdraw transaction
     let txn = Transaction::new_signed_with_payer(
@@ -897,7 +897,7 @@ async fn test_withdraw_basic() {
         .unwrap()
         .unwrap();
 
-    assert_eq!(3_584_400, vote_account.lamports);
+    assert_eq!(rent_exempt_amount, vote_account.lamports);
 
     // Ensure that the recipient account has the right balance
     let recipient_account = context
