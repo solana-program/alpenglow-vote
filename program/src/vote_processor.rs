@@ -8,6 +8,7 @@ use solana_program::pubkey::Pubkey;
 use solana_program::sysvar::slot_hashes::PodSlotHashes;
 
 use crate::error::VoteError;
+use crate::state::BlockTimestamp;
 use crate::state::{PodSlot, PodUnixTimestamp, VoteState};
 
 pub(crate) const CURRENT_NOTARIZE_VOTE_VERSION: u8 = 1;
@@ -17,7 +18,7 @@ pub(crate) const CURRENT_SKIP_VOTE_VERSION: u8 = 1;
 /// A notarization vote, the data expected by
 /// `VoteInstruction::Notarize`
 #[repr(C, packed)]
-#[derive(Clone, Copy, Debug, PartialEq, Pod, Zeroable)]
+#[derive(Clone, Copy, Debug, PartialEq)]
 pub(crate) struct NotarizationVoteInstructionData {
     /// The version of this vote message
     pub version: u8,
@@ -37,8 +38,13 @@ pub(crate) struct NotarizationVoteInstructionData {
     pub replayed_bank_hash: Hash,
 
     /// The timestamp when this vote was created
-    pub timestamp: PodUnixTimestamp,
+    pub timestamp: Option<PodUnixTimestamp>,
 }
+
+// SAFETY: for our purposes we treat a zero timestamp as the validator not
+// supplying a timestamp, so timestamp is safe to be zeroable
+unsafe impl Zeroable for NotarizationVoteInstructionData {}
+unsafe impl Pod for NotarizationVoteInstructionData {}
 
 /// A finalization vote, the data expected by
 /// `VoteInstruction::Finalize`
@@ -61,9 +67,6 @@ pub(crate) struct FinalizationVoteInstructionData {
     /// The bank_hash of the last replayed block
     /// Prior to APE this is the bank hash of `slot`
     pub replayed_bank_hash: Hash,
-
-    /// The timestamp when this vote was created
-    pub timestamp: PodUnixTimestamp,
 }
 
 /// A skip vote, the data expected by
@@ -79,9 +82,6 @@ pub(crate) struct SkipVoteInstructionData {
 
     /// The end (inclusive) of the slot range being skipped
     pub end_slot: PodSlot,
-
-    /// The timestamp when this vote was created
-    pub timestamp: PodUnixTimestamp,
 }
 
 fn replay_bank_hash_checks(replayed_slot: Slot, replayed_bank_hash: Hash) -> Result<(), VoteError> {
@@ -123,16 +123,24 @@ pub(crate) fn process_notarization_vote(
         return Err(VoteError::VoteTooOld.into());
     }
 
-    if UnixTimestamp::from(vote.timestamp) < vote_state.latest_timestamp() {
-        return Err(VoteError::TimestampTooOld.into());
-    }
-
     replay_bank_hash_checks(vote_slot, vote.replayed_bank_hash)?;
 
     vote_state.latest_notarized_slot = vote.slot;
     vote_state.latest_notarized_block_id = vote.block_id;
     vote_state.latest_notarized_bank_hash = vote.replayed_bank_hash;
-    vote_state.latest_timestamp = vote.timestamp;
+
+    if let Some(timestamp) = vote.timestamp.map(UnixTimestamp::from) {
+        if timestamp != 0 && timestamp > vote_state.latest_timestamp().timestamp() {
+            vote_state.latest_timestamp = BlockTimestamp {
+                slot: vote.slot,
+                timestamp: vote
+                    .timestamp
+                    .expect("timestamp is verified to be not None above"),
+            };
+        } else {
+            return Err(VoteError::TimestampTooOld.into());
+        }
+    }
 
     Ok(())
 }

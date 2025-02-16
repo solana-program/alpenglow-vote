@@ -130,7 +130,11 @@ async fn test_initialize_vote_account_basic() {
     assert_eq!(EPOCH, vote_state.authorized_voter().epoch());
     assert_eq!(None, vote_state.next_authorized_voter());
     assert_eq!(EpochCredit::default(), *vote_state.epoch_credits());
-    assert_eq!(UnixTimestamp::from(0), vote_state.latest_timestamp());
+    assert_eq!(Slot::from(0u64), vote_state.latest_timestamp().slot());
+    assert_eq!(
+        UnixTimestamp::from(0),
+        vote_state.latest_timestamp().timestamp()
+    );
 }
 
 #[tokio::test]
@@ -871,7 +875,7 @@ async fn test_withdraw_basic() {
         .unwrap()
         .unwrap();
 
-    let rent_exempt_amount = 3_528_720;
+    let rent_exempt_amount = 3_584_400;
     assert_eq!(rent_exempt_amount + 1_234_567, account.lamports);
 
     // Issue a Withdraw transaction
