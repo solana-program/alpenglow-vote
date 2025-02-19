@@ -172,7 +172,7 @@ pub fn notarize(
             block_id: *vote.block_id(),
             _replayed_slot: PodSlot::from(0),
             replayed_bank_hash: *vote.replayed_bank_hash(),
-            timestamp: PodUnixTimestamp::from(vote.timestamp()),
+            timestamp: vote.timestamp().map(PodUnixTimestamp::from),
         },
     )
 }
@@ -197,7 +197,6 @@ pub fn finalize(
             block_id: *vote.block_id(),
             _replayed_slot: PodSlot::from(0),
             replayed_bank_hash: *vote.replayed_bank_hash(),
-            timestamp: PodUnixTimestamp::from(vote.timestamp()),
         },
     )
 }
@@ -217,7 +216,6 @@ pub fn skip(vote_pubkey: Pubkey, vote_authority: Pubkey, vote: SkipVote) -> Inst
             version: CURRENT_SKIP_VOTE_VERSION,
             start_slot: PodSlot::from(start_slot),
             end_slot: PodSlot::from(end_slot),
-            timestamp: PodUnixTimestamp::from(vote.timestamp()),
         },
     )
 }

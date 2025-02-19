@@ -21,29 +21,7 @@ pub enum Vote {
     SkipVote(SkipVote),
 }
 
-macro_rules! dispatch {
-    (
-        $(#[$($attrss:tt)*])*
-        $vis:vis fn $name:ident(&self $(, $arg:ident : $ty:ty)?) $(-> $out:ty)?
-    ) => {
-        $(#[$($attrss)*])*
-        #[inline]
-        $vis fn $name(&self $(, $arg:$ty)?) $(-> $out)? {
-            match self {
-                Self::NotarizationVote(shred) => shred.$name($($arg, )?),
-                Self::FinalizationVote(shred) => shred.$name($($arg, )?),
-                Self::SkipVote(shred) => shred.$name($($arg, )?),
-            }
-        }
-    };
-}
-
 impl Vote {
-    dispatch! {
-        /// The time at which this vote was created
-        pub fn timestamp(&self) -> UnixTimestamp
-    }
-
     /// If this instruction represented by `instruction_data` is a vote
     pub fn is_simple_vote(instruction_data: &[u8]) -> Result<bool, ProgramError> {
         let instruction_type = decode_instruction_type(instruction_data)?;
@@ -108,7 +86,7 @@ pub struct NotarizationVote {
     block_id: Hash,
     _replayed_slot: Slot,
     replayed_bank_hash: Hash,
-    timestamp: UnixTimestamp,
+    timestamp: Option<UnixTimestamp>,
 }
 
 impl NotarizationVote {
@@ -118,7 +96,7 @@ impl NotarizationVote {
             block_id: notarization_vote.block_id,
             _replayed_slot: 0,
             replayed_bank_hash: notarization_vote.replayed_bank_hash,
-            timestamp: UnixTimestamp::from(notarization_vote.timestamp),
+            timestamp: notarization_vote.timestamp.map(UnixTimestamp::from),
         }
     }
 
@@ -128,7 +106,7 @@ impl NotarizationVote {
         block_id: Hash,
         _replayed_slot: Slot,
         replayed_bank_hash: Hash,
-        timestamp: UnixTimestamp,
+        timestamp: Option<UnixTimestamp>,
     ) -> Self {
         Self {
             slot,
@@ -155,7 +133,7 @@ impl NotarizationVote {
     }
 
     /// The time at which this vote was created
-    pub fn timestamp(&self) -> UnixTimestamp {
+    pub fn timestamp(&self) -> Option<UnixTimestamp> {
         self.timestamp
     }
 }
@@ -167,7 +145,6 @@ pub struct FinalizationVote {
     block_id: Hash,
     _replayed_slot: Slot,
     replayed_bank_hash: Hash,
-    timestamp: UnixTimestamp,
 }
 
 impl FinalizationVote {
@@ -177,24 +154,16 @@ impl FinalizationVote {
             block_id: finalization_vote.block_id,
             _replayed_slot: 0,
             replayed_bank_hash: finalization_vote.replayed_bank_hash,
-            timestamp: UnixTimestamp::from(finalization_vote.timestamp),
         }
     }
 
     /// Construct a finalization vote for `slot`
-    pub fn new(
-        slot: Slot,
-        block_id: Hash,
-        _replayed_slot: Slot,
-        replayed_bank_hash: Hash,
-        timestamp: UnixTimestamp,
-    ) -> Self {
+    pub fn new(slot: Slot, block_id: Hash, _replayed_slot: Slot, replayed_bank_hash: Hash) -> Self {
         Self {
             slot,
             block_id,
             _replayed_slot,
             replayed_bank_hash,
-            timestamp,
         }
     }
 
@@ -212,11 +181,6 @@ impl FinalizationVote {
     pub fn replayed_bank_hash(&self) -> &Hash {
         &self.replayed_bank_hash
     }
-
-    /// The time at which this vote was created
-    pub fn timestamp(&self) -> UnixTimestamp {
-        self.timestamp
-    }
 }
 
 /// A skip vote
@@ -226,7 +190,6 @@ impl FinalizationVote {
 pub struct SkipVote {
     start_slot: Slot,
     end_slot: Slot,
-    timestamp: UnixTimestamp,
 }
 
 impl SkipVote {
@@ -234,26 +197,19 @@ impl SkipVote {
         Self {
             start_slot: Slot::from(skip_vote.start_slot),
             end_slot: Slot::from(skip_vote.end_slot),
-            timestamp: UnixTimestamp::from(skip_vote.timestamp),
         }
     }
 
     /// Construct a skip vote for `[start_slot, end_slot]`
-    pub fn new(start_slot: Slot, end_slot: Slot, timestamp: UnixTimestamp) -> Self {
+    pub fn new(start_slot: Slot, end_slot: Slot) -> Self {
         Self {
             start_slot,
             end_slot,
-            timestamp,
         }
     }
 
     /// The inclusive on both ends range of slots to skip
     pub fn skip_range(&self) -> (Slot, Slot) {
         (self.start_slot, self.end_slot)
-    }
-
-    /// The time at which this vote was created
-    pub fn timestamp(&self) -> UnixTimestamp {
-        self.timestamp
     }
 }
