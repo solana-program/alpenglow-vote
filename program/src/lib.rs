@@ -1,6 +1,5 @@
 //! Alpenglow Vote program
 #![deny(missing_docs)]
-#![feature(custom_test_frameworks)]
 pub mod accounting;
 mod entrypoint;
 pub mod error;

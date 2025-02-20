@@ -391,14 +391,11 @@ pub(crate) fn process_skip_vote(
 
 #[cfg(test)]
 mod tests {
-    use std::slice;
-    use std::sync::Mutex;
-
     use solana_sdk::epoch_schedule::EpochSchedule;
     use solana_sdk::program_error::ProgramError;
-    use solana_sdk::sysvar::{Sysvar, SysvarId};
-    use solana_sdk::{clock::Clock, pubkey::Pubkey, slot_hashes::SlotHashes};
+    use solana_sdk::{clock::Clock, pubkey::Pubkey};
     use spl_pod::primitives::PodU64;
+    use test_case::test_case;
 
     use crate::accounting::EpochCredit;
     use crate::error::VoteError;
@@ -412,23 +409,31 @@ mod tests {
     };
 
     #[test]
-    fn test_vote_credits_constants() {
-        // Do this silly check so that the test can be written in terms of numbers.
-        assert_eq!(2, VOTE_CREDITS_GRACE_SLOTS);
-        assert_eq!(16, VOTE_CREDITS_MAXIMUM_PER_SLOT);
+    fn test_parity_old_vote_program() {
+        assert_eq!(
+            VOTE_CREDITS_GRACE_SLOTS,
+            solana_sdk::vote::state::VOTE_CREDITS_GRACE_SLOTS as u64
+        );
+        assert_eq!(
+            VOTE_CREDITS_MAXIMUM_PER_SLOT,
+            solana_sdk::vote::state::VOTE_CREDITS_MAXIMUM_PER_SLOT as u64
+        );
     }
 
     #[test]
     fn test_latency_to_credits_max_credits() {
-        for latency in 0..=2 {
-            assert_eq!(16, latency_to_credits(latency));
+        for latency in 0..=VOTE_CREDITS_GRACE_SLOTS {
+            assert_eq!(VOTE_CREDITS_MAXIMUM_PER_SLOT, latency_to_credits(latency));
         }
     }
 
     #[test]
     fn test_latency_to_credits_ramp_down() {
-        for latency in 3..=17 {
-            assert_eq!(16 - (latency - 2), latency_to_credits(latency));
+        for latency in 3..=VOTE_CREDITS_MAXIMUM_PER_SLOT + 1 {
+            assert_eq!(
+                VOTE_CREDITS_MAXIMUM_PER_SLOT - (latency - 2),
+                latency_to_credits(latency)
+            );
         }
     }
 
@@ -439,86 +444,33 @@ mod tests {
         }
     }
 
-    lazy_static::lazy_static! {
-        static ref AWARD_CREDITS_MUTEX: Mutex<()> = Mutex::new(());
-    }
+    fn setup_vote_state(clock: &Clock) -> VoteState {
+        let iaid = InitializeAccountInstructionData {
+            node_pubkey: Pubkey::new_unique(),
+            authorized_voter: Pubkey::new_unique(),
+            authorized_withdrawer: Pubkey::new_unique(),
+            commission: 0_u8,
+        };
 
-    macro_rules! award_credits_setup {
-        ($clock:expr, $epoch_schedule:expr) => {{
-            struct SyscallStubs {}
-
-            impl solana_sdk::program_stubs::SyscallStubs for SyscallStubs {
-                fn sol_get_clock_sysvar(&self, var_addr: *mut u8) -> u64 {
-                    unsafe {
-                        *(var_addr as *mut _ as *mut Clock) = $clock;
-                    }
-                    solana_program::entrypoint::SUCCESS
-                }
-
-                fn sol_get_epoch_schedule_sysvar(&self, var_addr: *mut u8) -> u64 {
-                    unsafe {
-                        *(var_addr as *mut _ as *mut EpochSchedule) = $epoch_schedule;
-                    }
-                    solana_program::entrypoint::SUCCESS
-                }
-
-                fn sol_get_sysvar(
-                    &self,
-                    sysvar_id_addr: *const u8,
-                    var_addr: *mut u8,
-                    _offset: u64,
-                    _length: u64,
-                ) -> u64 {
-                    let sysvar_id: &[u8; 32] = unsafe {
-                        slice::from_raw_parts(sysvar_id_addr, size_of::<Pubkey>())
-                            .try_into()
-                            .unwrap_unchecked()
-                    };
-
-                    if &SlotHashes::id().to_bytes() == sysvar_id {
-                        unsafe {
-                            *(var_addr as *mut _ as *mut SlotHashes) = SlotHashes::default();
-                        }
-                    }
-
-                    solana_program::entrypoint::SUCCESS
-                }
-            }
-
-            solana_sdk::program_stubs::set_syscall_stubs(Box::new(SyscallStubs {}));
-
-            // InitializeAccountInstructionData
-            let iaid = InitializeAccountInstructionData {
-                node_pubkey: Pubkey::new_unique(),
-                authorized_voter: Pubkey::new_unique(),
-                authorized_withdrawer: Pubkey::new_unique(),
-                commission: 0_u8,
-            };
-
-            let clock = Clock::get().unwrap();
-            VoteState::new(&iaid, &clock)
-        }};
+        VoteState::new(&iaid, clock)
     }
 
     #[test]
     fn test_award_credits_vote_slot_cannot_be_after_clock_slot() {
-        let _guard = AWARD_CREDITS_MUTEX.lock().unwrap();
-
         let vote_slot = 1024_u64;
+        let clock = Clock {
+            slot: 512,
+            epoch: 256,
+            ..Clock::default()
+        };
 
-        let mut vote_state = award_credits_setup!(
-            Clock {
-                slot: 512,
-                epoch: 256,
-                ..Default::default()
-            },
-            EpochSchedule::default()
+        let mut vote_state = setup_vote_state(&clock);
+        let result = award_credits(
+            &mut vote_state,
+            vote_slot,
+            &clock,
+            &EpochSchedule::default(),
         );
-
-        let clock = Clock::get().unwrap();
-        let epoch_schedule = EpochSchedule::get().unwrap();
-
-        let result = award_credits(&mut vote_state, vote_slot, &clock, &epoch_schedule);
 
         assert!(result.is_err());
         assert_eq!(
@@ -534,138 +486,106 @@ mod tests {
             .saturating_add(524_256)
     }
 
-    macro_rules! award_credits_vote_epoch_equals_epoch_init {
-        ($latency:expr) => {{
-            let _guard = AWARD_CREDITS_MUTEX.lock().unwrap();
+    #[test_case(1; "one")]
+    #[test_case(2; "two")]
+    #[test_case(5; "five")]
+    #[test_case(20; "twenty")]
+    fn test_award_credits_vote_epoch_equals_epoch_init(latency: u64) {
+        let clock = Clock {
+            slot: epoch_to_starting_slot(256).saturating_add(latency),
+            epoch: 256,
+            ..Clock::default()
+        };
+        let mut vote_state = setup_vote_state(&clock);
 
-            let mut vote_state = award_credits_setup!(
-                Clock {
-                    slot: epoch_to_starting_slot(256).saturating_add($latency),
-                    epoch: 256,
-                    ..Default::default()
-                },
-                EpochSchedule::default()
-            );
+        let vote_slot = epoch_to_starting_slot(256);
 
-            let vote_slot = epoch_to_starting_slot(256);
-            let clock = Clock::get().unwrap();
-            let epoch_schedule = EpochSchedule::get().unwrap();
+        assert_eq!(0, vote_state.epoch_credits.epoch());
+        assert_eq!(0, vote_state.epoch_credits.prev_credits());
+        assert_eq!(0, vote_state.epoch_credits.credits());
 
-            assert_eq!(0, vote_state.epoch_credits.epoch());
-            assert_eq!(0, vote_state.epoch_credits.prev_credits());
-            assert_eq!(0, vote_state.epoch_credits.credits());
+        assert!(award_credits(
+            &mut vote_state,
+            vote_slot,
+            &clock,
+            &EpochSchedule::default()
+        )
+        .is_ok());
+        assert_eq!(latency, clock.slot.saturating_sub(vote_slot));
 
-            assert!(award_credits(&mut vote_state, vote_slot, &clock, &epoch_schedule).is_ok());
-            assert_eq!($latency, clock.slot.saturating_sub(vote_slot));
+        let expected_earned_credits = latency_to_credits(latency);
 
-            let expected_earned_credits = latency_to_credits($latency);
-
-            assert_eq!(256, vote_state.epoch_credits.epoch());
-            assert_eq!(0, vote_state.epoch_credits.prev_credits());
-            assert_eq!(expected_earned_credits, vote_state.epoch_credits.credits());
-        }};
+        assert_eq!(256, vote_state.epoch_credits.epoch());
+        assert_eq!(0, vote_state.epoch_credits.prev_credits());
+        assert_eq!(expected_earned_credits, vote_state.epoch_credits.credits());
     }
 
-    macro_rules! award_credits_vote_epoch_equals_clock_epoch_intermediate {
-        ($latency:expr) => {{
-            let _guard = AWARD_CREDITS_MUTEX.lock().unwrap();
+    #[test_case(1; "one")]
+    #[test_case(2; "two")]
+    #[test_case(5; "five")]
+    #[test_case(20; "twenty")]
+    fn test_award_credits_vote_epoch_equals_clock_epoch_intermediate(latency: u64) {
+        let clock = Clock {
+            slot: epoch_to_starting_slot(256).saturating_add(latency),
+            epoch: 256,
+            ..Clock::default()
+        };
+        let epoch_schedule = EpochSchedule::default();
+        let mut vote_state = setup_vote_state(&clock);
+        let vote_slot = epoch_to_starting_slot(256);
 
-            let mut vote_state = award_credits_setup!(
-                Clock {
-                    slot: epoch_to_starting_slot(256).saturating_add($latency),
-                    epoch: 256,
-                    ..Default::default()
-                },
-                EpochSchedule::default()
-            );
+        assert_eq!(256, epoch_schedule.get_epoch(clock.slot));
+        assert_eq!(256, epoch_schedule.get_epoch(vote_slot));
 
-            let vote_slot = epoch_to_starting_slot(256);
+        vote_state.epoch_credits = EpochCredit {
+            epoch: PodU64::from(256),
+            credits: PodU64::from(123),
+            prev_credits: PodU64::from(234),
+        };
 
-            let clock = Clock::get().unwrap();
-            let epoch_schedule = EpochSchedule::get().unwrap();
+        assert!(award_credits(&mut vote_state, vote_slot, &clock, &epoch_schedule).is_ok());
+        assert_eq!(latency, clock.slot.saturating_sub(vote_slot));
 
-            assert_eq!(256, epoch_schedule.get_epoch(clock.slot));
-            assert_eq!(256, epoch_schedule.get_epoch(vote_slot));
+        let expected_earned_credits = latency_to_credits(clock.slot.saturating_sub(vote_slot));
 
-            vote_state.epoch_credits = EpochCredit {
-                epoch: PodU64::from(256),
-                credits: PodU64::from(123),
-                prev_credits: PodU64::from(234),
-            };
-
-            assert!(award_credits(&mut vote_state, vote_slot, &clock, &epoch_schedule).is_ok());
-            assert_eq!($latency, clock.slot.saturating_sub(vote_slot));
-
-            let expected_earned_credits = latency_to_credits(clock.slot.saturating_sub(vote_slot));
-
-            assert_eq!(256, vote_state.epoch_credits.epoch());
-            assert_eq!(234, vote_state.epoch_credits.prev_credits());
-            assert_eq!(
-                expected_earned_credits.saturating_add(123),
-                vote_state.epoch_credits.credits()
-            );
-        }};
+        assert_eq!(256, vote_state.epoch_credits.epoch());
+        assert_eq!(234, vote_state.epoch_credits.prev_credits());
+        assert_eq!(
+            expected_earned_credits.saturating_add(123),
+            vote_state.epoch_credits.credits()
+        );
     }
 
-    macro_rules! award_credits_vote_epoch_greater_than_clock_epoch {
-        ($latency:expr) => {{
-            let _guard = AWARD_CREDITS_MUTEX.lock().unwrap();
+    #[test_case(1; "one")]
+    #[test_case(2; "two")]
+    #[test_case(5; "five")]
+    #[test_case(20; "twenty")]
+    fn test_award_credits_vote_epoch_greater_than_clock_epoch(latency: u64) {
+        let clock = Clock {
+            slot: epoch_to_starting_slot(256),
+            epoch: 256,
+            ..Clock::default()
+        };
+        let epoch_schedule = EpochSchedule::default();
+        let mut vote_state = setup_vote_state(&clock);
+        let vote_slot = epoch_to_starting_slot(256).saturating_sub(latency);
 
-            let mut vote_state = award_credits_setup!(
-                Clock {
-                    slot: epoch_to_starting_slot(256),
-                    epoch: 256,
-                    ..Default::default()
-                },
-                EpochSchedule::default()
-            );
+        assert_eq!(255, epoch_schedule.get_epoch(vote_slot));
+        assert_eq!(256, epoch_schedule.get_epoch(clock.slot));
 
-            let vote_slot = epoch_to_starting_slot(256).saturating_sub($latency);
+        vote_state.epoch_credits = EpochCredit {
+            epoch: PodU64::from(12),
+            credits: PodU64::from(123),
+            prev_credits: PodU64::from(234),
+        };
 
-            let clock = Clock::get().unwrap();
-            let epoch_schedule = EpochSchedule::get().unwrap();
+        assert!(award_credits(&mut vote_state, vote_slot, &clock, &epoch_schedule).is_ok());
+        assert_eq!(latency, clock.slot.saturating_sub(vote_slot));
 
-            assert_eq!(255, epoch_schedule.get_epoch(vote_slot));
-            assert_eq!(256, epoch_schedule.get_epoch(clock.slot));
+        let expected_earned_credits = latency_to_credits(clock.slot.saturating_sub(vote_slot));
 
-            vote_state.epoch_credits = EpochCredit {
-                epoch: PodU64::from(12),
-                credits: PodU64::from(123),
-                prev_credits: PodU64::from(234),
-            };
-
-            assert!(award_credits(&mut vote_state, vote_slot, &clock, &epoch_schedule).is_ok());
-            assert_eq!($latency, clock.slot.saturating_sub(vote_slot));
-
-            let expected_earned_credits = latency_to_credits(clock.slot.saturating_sub(vote_slot));
-
-            assert_eq!(255, vote_state.epoch_credits.epoch());
-            assert_eq!(123 + 234, vote_state.epoch_credits.prev_credits());
-            assert_eq!(expected_earned_credits, vote_state.epoch_credits.credits());
-        }};
-    }
-
-    #[test]
-    fn test_award_credits_vote_epoch_equals_epoch_init() {
-        award_credits_vote_epoch_equals_epoch_init!(1);
-        award_credits_vote_epoch_equals_epoch_init!(2);
-        award_credits_vote_epoch_equals_epoch_init!(5);
-        award_credits_vote_epoch_equals_epoch_init!(20);
-    }
-
-    #[test]
-    fn test_award_credits_vote_epoch_equals_clock_epoch_intermediate() {
-        award_credits_vote_epoch_equals_clock_epoch_intermediate!(1);
-        award_credits_vote_epoch_equals_clock_epoch_intermediate!(2);
-        award_credits_vote_epoch_equals_clock_epoch_intermediate!(5);
-        award_credits_vote_epoch_equals_clock_epoch_intermediate!(20);
-    }
-
-    #[test]
-    fn test_award_credits_vote_epoch_greater_than_clock_epoch() {
-        award_credits_vote_epoch_greater_than_clock_epoch!(1);
-        award_credits_vote_epoch_greater_than_clock_epoch!(2);
-        award_credits_vote_epoch_greater_than_clock_epoch!(5);
-        award_credits_vote_epoch_greater_than_clock_epoch!(20);
+        assert_eq!(255, vote_state.epoch_credits.epoch());
+        assert_eq!(123 + 234, vote_state.epoch_credits.prev_credits());
+        assert_eq!(expected_earned_credits, vote_state.epoch_credits.credits());
     }
 }
