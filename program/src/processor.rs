@@ -1,5 +1,7 @@
 //! Program state processor
+use solana_program::epoch_schedule::EpochSchedule;
 use solana_program::program_error::ProgramError;
+use solana_program::sysvar::slot_hashes::PodSlotHashes;
 use solana_program::{
     account_info::{next_account_info, AccountInfo},
     clock::{self, Clock},
@@ -22,6 +24,14 @@ use crate::state::VoteState;
 use crate::vote_processor::{
     self, FinalizationVoteInstructionData, NotarizationVoteInstructionData, SkipVoteInstructionData,
 };
+
+fn pod_slot_hashes() -> Result<PodSlotHashes, VoteError> {
+    PodSlotHashes::fetch().map_err(|_| VoteError::MissingSlotHashesSysvar)
+}
+
+fn epoch_schedule() -> Result<EpochSchedule, VoteError> {
+    EpochSchedule::get().map_err(|_| VoteError::MissingEpochScheduleSysvar)
+}
 
 /// Instruction processor
 pub fn process_instruction(
@@ -212,31 +222,64 @@ pub fn process_instruction(
             )
         }
         VoteInstruction::Notarize => {
+            let clock = clock::Clock::get()?;
+            let slot_hashes = pod_slot_hashes()?;
+            let es = epoch_schedule()?;
+
             let Some(authority) = next_account_info(account_info_iter)?.signer_key() else {
                 return Err(ProgramError::MissingRequiredSignature);
             };
 
             let vote = decode_instruction_data::<NotarizationVoteInstructionData>(input)?;
 
-            vote_processor::process_notarization_vote(vote_account, authority, vote)
+            vote_processor::process_notarization_vote(
+                vote_account,
+                authority,
+                &clock,
+                &slot_hashes,
+                &es,
+                vote,
+            )
         }
         VoteInstruction::Finalize => {
+            let clock = clock::Clock::get()?;
+            let slot_hashes = pod_slot_hashes()?;
+            let es = epoch_schedule()?;
+
             let Some(authority) = next_account_info(account_info_iter)?.signer_key() else {
                 return Err(ProgramError::MissingRequiredSignature);
             };
 
             let vote = decode_instruction_data::<FinalizationVoteInstructionData>(input)?;
 
-            vote_processor::process_finalization_vote(vote_account, authority, vote)
+            vote_processor::process_finalization_vote(
+                vote_account,
+                authority,
+                &clock,
+                &slot_hashes,
+                &es,
+                vote,
+            )
         }
         VoteInstruction::Skip => {
+            let clock = clock::Clock::get()?;
+            let slot_hashes = pod_slot_hashes()?;
+            let es = epoch_schedule()?;
+
             let Some(authority) = next_account_info(account_info_iter)?.signer_key() else {
                 return Err(ProgramError::MissingRequiredSignature);
             };
 
             let vote = decode_instruction_data::<SkipVoteInstructionData>(input)?;
 
-            vote_processor::process_skip_vote(vote_account, authority, vote)
+            vote_processor::process_skip_vote(
+                vote_account,
+                authority,
+                &clock,
+                &slot_hashes,
+                &es,
+                vote,
+            )
         }
     }
 }
