@@ -705,9 +705,9 @@ mod tests {
         //
         // vote_slot = clock.slot - 1 => 16 credits (full marks)
         // vote_slot = clock.slot - 2 => 16 credits (full marks)
-        // vote_slot = clock.slot - 3 => 15 credits (full marks)
-        // vote_slot = clock.slot - 4 => 14 credits (full marks)
-        // vote_slot = clock.slot - 5 => 13 credits (full marks)
+        // vote_slot = clock.slot - 3 => 15 credits
+        // vote_slot = clock.slot - 4 => 14 credits
+        // vote_slot = clock.slot - 5 => 13 credits
         assert_eq!(74, vote_state.epoch_credits().credits());
         assert_eq!(0, vote_state.epoch_credits().prev_credits());
     }
