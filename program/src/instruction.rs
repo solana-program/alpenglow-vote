@@ -207,7 +207,7 @@ pub fn skip(vote_pubkey: Pubkey, vote_authority: Pubkey, vote: SkipVote) -> Inst
         AccountMeta::new(vote_pubkey, false),
         AccountMeta::new_readonly(vote_authority, true),
     ];
-    let (start_slot, end_slot) = vote.skip_range();
+    let (start_slot, end_slot) = (vote.start_slot, vote.end_slot);
 
     encode_instruction(
         accounts,
