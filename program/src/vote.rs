@@ -1,5 +1,9 @@
 //! Vote data types for use by clients
 
+use std::ops::RangeInclusive;
+
+use either::Either;
+use serde::{Deserialize, Serialize};
 use solana_program::clock::{Slot, UnixTimestamp};
 use solana_program::hash::Hash;
 use solana_program::program_error::ProgramError;
@@ -11,17 +15,39 @@ use crate::vote_processor::{
 
 /// Enum that clients can use to parse and create the vote
 /// structures expected by the program
-#[derive(Clone, Copy, Debug, PartialEq)]
+#[derive(Clone, Copy, Debug, PartialEq, Serialize, Deserialize)]
 pub enum Vote {
     /// A notarization vote
-    NotarizationVote(NotarizationVote),
+    Notarize(NotarizationVote),
     /// A finalization vote
-    FinalizationVote(FinalizationVote),
+    Finalize(FinalizationVote),
     /// A skip vote
-    SkipVote(SkipVote),
+    Skip(SkipVote),
 }
 
 impl Vote {
+    /// Create a new notarization vote
+    pub fn new_notarization_vote(
+        slot: Slot,
+        block_id: Hash,
+        bank_hash: Hash,
+        timestamp: Option<UnixTimestamp>,
+    ) -> Self {
+        Self::from(NotarizationVote::new(
+            slot, block_id, slot, bank_hash, timestamp,
+        ))
+    }
+
+    /// Create a new finalization vote
+    pub fn new_finalization_vote(slot: Slot, block_id: Hash, bank_hash: Hash) -> Self {
+        Self::from(FinalizationVote::new(slot, block_id, slot, bank_hash))
+    }
+
+    /// Create a new skip vote
+    pub fn new_skip_vote(start: Slot, end: Slot) -> Self {
+        Self::from(SkipVote::new(start, end))
+    }
+
     /// If this instruction represented by `instruction_data` is a vote
     pub fn is_simple_vote(instruction_data: &[u8]) -> Result<bool, ProgramError> {
         let instruction_type = decode_instruction_type(instruction_data)?;
@@ -59,28 +85,74 @@ impl Vote {
             _ => panic!("Programmer error"),
         }
     }
+
+    /// The slot which was voted for. For skip votes, this is the end of the range
+    pub fn slot(&self) -> Slot {
+        match self {
+            Self::Notarize(vote) => vote.slot(),
+            Self::Finalize(vote) => vote.slot(),
+            Self::Skip(vote) => vote.end_slot,
+        }
+    }
+
+    /// The skip range for skip votes
+    pub fn skip_range(&self) -> Option<RangeInclusive<Slot>> {
+        match self {
+            Self::Notarize(_) | Self::Finalize(_) => None,
+            Self::Skip(vote) => Some(vote.skip_range()),
+        }
+    }
+
+    /// Whether the vote is a notarization vote
+    pub fn is_notarization(&self) -> bool {
+        matches!(self, Self::Notarize(_))
+    }
+
+    /// Whether the vote is a finalization vote
+    pub fn is_finalize(&self) -> bool {
+        matches!(self, Self::Finalize(_))
+    }
+
+    /// Whether the vote is a skip vote
+    pub fn is_skip(&self) -> bool {
+        matches!(self, Self::Skip(_))
+    }
+
+    /// Whether the vote is a notarization or finalization
+    pub fn is_notarization_or_finalization(&self) -> bool {
+        matches!(self, Self::Notarize(_) | Self::Finalize(_))
+    }
+
+    /// The voted slots, `Left` for a notarize/finalize vote on a single slot, `Right` for a skip range
+    pub fn voted_slots(&self) -> Either<Slot, RangeInclusive<Slot>> {
+        match self {
+            Self::Notarize(vote) => Either::Left(vote.slot()),
+            Self::Finalize(vote) => Either::Left(vote.slot()),
+            Self::Skip(vote) => Either::Right(vote.skip_range()),
+        }
+    }
 }
 
 impl From<NotarizationVote> for Vote {
     fn from(vote: NotarizationVote) -> Self {
-        Self::NotarizationVote(vote)
+        Self::Notarize(vote)
     }
 }
 
 impl From<FinalizationVote> for Vote {
     fn from(vote: FinalizationVote) -> Self {
-        Self::FinalizationVote(vote)
+        Self::Finalize(vote)
     }
 }
 
 impl From<SkipVote> for Vote {
     fn from(vote: SkipVote) -> Self {
-        Self::SkipVote(vote)
+        Self::Skip(vote)
     }
 }
 
 /// A notarization vote
-#[derive(Clone, Copy, Debug, PartialEq)]
+#[derive(Clone, Copy, Debug, PartialEq, Default, Serialize, Deserialize)]
 pub struct NotarizationVote {
     slot: Slot,
     block_id: Hash,
@@ -139,7 +211,7 @@ impl NotarizationVote {
 }
 
 /// A finalization vote
-#[derive(Clone, Copy, Debug, PartialEq)]
+#[derive(Clone, Copy, Debug, PartialEq, Default, Serialize, Deserialize)]
 pub struct FinalizationVote {
     slot: Slot,
     block_id: Hash,
@@ -186,10 +258,10 @@ impl FinalizationVote {
 /// A skip vote
 /// Represents a range of slots to skip
 /// inclusive on both ends
-#[derive(Clone, Copy, Debug, PartialEq)]
+#[derive(Clone, Copy, Debug, PartialEq, Default, Serialize, Deserialize)]
 pub struct SkipVote {
-    start_slot: Slot,
-    end_slot: Slot,
+    pub(crate) start_slot: Slot,
+    pub(crate) end_slot: Slot,
 }
 
 impl SkipVote {
@@ -209,7 +281,7 @@ impl SkipVote {
     }
 
     /// The inclusive on both ends range of slots to skip
-    pub fn skip_range(&self) -> (Slot, Slot) {
-        (self.start_slot, self.end_slot)
+    pub fn skip_range(&self) -> RangeInclusive<Slot> {
+        self.start_slot..=self.end_slot
     }
 }
