@@ -6,8 +6,8 @@ use either::Either;
 use serde::{Deserialize, Serialize};
 use solana_program::clock::{Slot, UnixTimestamp};
 use solana_program::hash::Hash;
-use solana_program::program_error::ProgramError;
 use solana_program::instruction::Instruction;
+use solana_program::program_error::ProgramError;
 use solana_program::pubkey::Pubkey;
 
 use crate::instruction::{self, decode_instruction_data, decode_instruction_type, VoteInstruction};
