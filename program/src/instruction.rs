@@ -156,7 +156,7 @@ pub enum VoteInstruction {
 pub fn notarize(
     vote_pubkey: Pubkey,
     vote_authority: Pubkey,
-    vote: NotarizationVote,
+    vote: &NotarizationVote,
 ) -> Instruction {
     let accounts = vec![
         AccountMeta::new(vote_pubkey, false),
@@ -181,7 +181,7 @@ pub fn notarize(
 pub fn finalize(
     vote_pubkey: Pubkey,
     vote_authority: Pubkey,
-    vote: FinalizationVote,
+    vote: &FinalizationVote,
 ) -> Instruction {
     let accounts = vec![
         AccountMeta::new(vote_pubkey, false),
@@ -202,7 +202,7 @@ pub fn finalize(
 }
 
 /// Instruction builder to create a skip vote
-pub fn skip(vote_pubkey: Pubkey, vote_authority: Pubkey, vote: SkipVote) -> Instruction {
+pub fn skip(vote_pubkey: Pubkey, vote_authority: Pubkey, vote: &SkipVote) -> Instruction {
     let accounts = vec![
         AccountMeta::new(vote_pubkey, false),
         AccountMeta::new_readonly(vote_authority, true),

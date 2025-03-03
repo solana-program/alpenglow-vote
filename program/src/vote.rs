@@ -7,8 +7,10 @@ use serde::{Deserialize, Serialize};
 use solana_program::clock::{Slot, UnixTimestamp};
 use solana_program::hash::Hash;
 use solana_program::program_error::ProgramError;
+use solana_program::instruction::Instruction;
+use solana_program::pubkey::Pubkey;
 
-use crate::instruction::{decode_instruction_data, decode_instruction_type, VoteInstruction};
+use crate::instruction::{self, decode_instruction_data, decode_instruction_type, VoteInstruction};
 use crate::vote_processor::{
     FinalizationVoteInstructionData, NotarizationVoteInstructionData, SkipVoteInstructionData,
 };
@@ -83,6 +85,15 @@ impl Vote {
                 Ok(Vote::from(SkipVote::new_internal(skip_vote)))
             }
             _ => panic!("Programmer error"),
+        }
+    }
+
+    /// Generate a vote instruction from this vote
+    pub fn to_vote_instruction(&self, vote_pubkey: Pubkey, vote_authority: Pubkey) -> Instruction {
+        match self {
+            Self::Notarize(vote) => instruction::notarize(vote_pubkey, vote_authority, vote),
+            Self::Finalize(vote) => instruction::finalize(vote_pubkey, vote_authority, vote),
+            Self::Skip(vote) => instruction::skip(vote_pubkey, vote_authority, vote),
         }
     }
 
