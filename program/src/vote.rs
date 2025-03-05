@@ -3,9 +3,10 @@
 use std::ops::RangeInclusive;
 
 use either::Either;
+#[cfg(feature = "serde")]
 use serde::{Deserialize, Serialize};
+use solana_hash::Hash;
 use solana_program::clock::{Slot, UnixTimestamp};
-use solana_program::hash::Hash;
 use solana_program::instruction::Instruction;
 use solana_program::program_error::ProgramError;
 use solana_program::pubkey::Pubkey;
@@ -17,7 +18,13 @@ use crate::vote_processor::{
 
 /// Enum that clients can use to parse and create the vote
 /// structures expected by the program
-#[derive(Clone, Copy, Debug, PartialEq, Serialize, Deserialize)]
+#[cfg_attr(
+    feature = "frozen-abi",
+    derive(AbiExample, AbiEnumVisitor),
+    frozen_abi(digest = "3FyBmZL8rsCkrz6AnqjfgjskNF3HyWMVGejteSP6wC6h")
+)]
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize,))]
+#[derive(Clone, Copy, Debug, PartialEq)]
 pub enum Vote {
     /// A notarization vote
     Notarize(NotarizationVote),
@@ -163,7 +170,13 @@ impl From<SkipVote> for Vote {
 }
 
 /// A notarization vote
-#[derive(Clone, Copy, Debug, PartialEq, Default, Serialize, Deserialize)]
+#[cfg_attr(
+    feature = "frozen-abi",
+    derive(AbiExample),
+    frozen_abi(digest = "FjK47hyf3RFm2bVX6My8barMStC2P6cAg3S9ALpvGpwd")
+)]
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize,))]
+#[derive(Clone, Copy, Debug, PartialEq, Default)]
 pub struct NotarizationVote {
     slot: Slot,
     block_id: Hash,
@@ -222,7 +235,13 @@ impl NotarizationVote {
 }
 
 /// A finalization vote
-#[derive(Clone, Copy, Debug, PartialEq, Default, Serialize, Deserialize)]
+#[cfg_attr(
+    feature = "frozen-abi",
+    derive(AbiExample),
+    frozen_abi(digest = "5vg9jirqMy6FbBRm3kZLENrYvaMMZE8brKY99zG2g7FA")
+)]
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize,))]
+#[derive(Clone, Copy, Debug, PartialEq, Default)]
 pub struct FinalizationVote {
     slot: Slot,
     block_id: Hash,
@@ -269,7 +288,13 @@ impl FinalizationVote {
 /// A skip vote
 /// Represents a range of slots to skip
 /// inclusive on both ends
-#[derive(Clone, Copy, Debug, PartialEq, Default, Serialize, Deserialize)]
+#[cfg_attr(
+    feature = "frozen-abi",
+    derive(AbiExample),
+    frozen_abi(digest = "56VUHMkVzrPasPzs1C6Wn4MXUeBqKmApMKiF5Mqyk5xr")
+)]
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize,))]
+#[derive(Clone, Copy, Debug, PartialEq, Default)]
 pub struct SkipVote {
     pub(crate) start_slot: Slot,
     pub(crate) end_slot: Slot,
