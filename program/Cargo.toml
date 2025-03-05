@@ -39,8 +39,8 @@ solana-frozen-abi-macro = { version = "2.2.0", optional = true, features = [
     "frozen-abi",
 ] }
 solana-logger = { version = "2.2.0", optional = true }
-serde = { version = "1.0.218", optional = true } # must match the serde_derive version, see https://github.com/serde-rs/serde/issues/2584#issuecomment-1685252251
-serde_derive = { version = "1.0.218", optional = true } # must match the serde version, see https://github.com/serde-rs/serde/issues/2584#issuecomment-1685252251
+serde = { version = "1.0.217", optional = true } # must match the serde_derive version, see https://github.com/serde-rs/serde/issues/2584#issuecomment-1685252251
+serde_derive = { version = "1.0.217", optional = true } # must match the serde version, see https://github.com/serde-rs/serde/issues/2584#issuecomment-1685252251
 
 [dev-dependencies]
 lazy_static = "1.5.0"
