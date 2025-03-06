@@ -160,6 +160,7 @@ dependencies = [
  "solana-program-test",
  "solana-sdk",
  "solana-signature",
+ "solana-vote-interface",
  "spl-pod",
  "test-case",
  "thiserror 2.0.12",
