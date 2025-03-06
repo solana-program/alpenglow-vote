@@ -30,7 +30,7 @@ either = "1.15.0"
 solana-program = "2.2.0"
 solana-signature = "2.2.0"
 thiserror = "2.0"
-spl-pod = "0.5.0"
+spl-pod = "0.5.1"
 solana-hash = "2.2.0"
 solana-frozen-abi = { version = "2.2.0", optional = true, features = [
     "frozen-abi",
