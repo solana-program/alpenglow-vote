@@ -238,7 +238,7 @@ pub(crate) fn process_notarization_vote(
     }
 
     // Notarization votes must be strictly increasing
-    if vote_slot <= vote_state.latest_notarized_slot() && vote_state.latest_notarized_slot() != 0 {
+    if vote_slot <= Slot::from(vote_state.latest_notarized_slot) {
         return Err(VoteError::VoteTooOld.into());
     }
 
@@ -290,7 +290,7 @@ pub(crate) fn process_finalization_vote(
         return Err(ProgramError::MissingRequiredSignature);
     }
 
-    if vote_slot <= vote_state.latest_finalized_slot() {
+    if vote_slot <= Slot::from(vote_state.latest_finalized_slot) {
         return Err(VoteError::VoteTooOld.into());
     }
 
@@ -339,9 +339,8 @@ pub(crate) fn process_skip_vote(
         return Err(VoteError::SkipEndSlotLowerThanSkipStartSlot.into());
     }
 
-    if vote_start_slot <= vote_state.latest_finalized_slot()
-        && vote_state.latest_finalized_slot() <= vote_end_slot
-    {
+    let latest_finalized_slot = Slot::from(vote_state.latest_finalized_slot);
+    if vote_start_slot <= latest_finalized_slot && latest_finalized_slot <= vote_end_slot {
         return Err(VoteError::SkipSlotRangeContainsFinalizationVote.into());
     }
 

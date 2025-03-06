@@ -3,6 +3,7 @@
 use bytemuck::{Pod, Zeroable};
 use solana_program::account_info::AccountInfo;
 use solana_program::clock::Clock;
+use solana_program::clock::Epoch;
 use solana_program::clock::Slot;
 use solana_program::clock::UnixTimestamp;
 use solana_program::hash::Hash;
@@ -12,6 +13,9 @@ use spl_pod::primitives::{PodI64, PodU64};
 
 use crate::accounting::{AuthorizedVoter, EpochCredit};
 use crate::instruction::InitializeAccountInstructionData;
+
+#[cfg(not(target_os = "solana"))]
+use solana_vote_interface::state::BlockTimestamp as LegacyBlockTimestamp;
 
 pub(crate) type PodEpoch = PodU64;
 pub(crate) type PodSlot = PodU64;
@@ -100,6 +104,16 @@ impl BlockTimestamp {
     }
 }
 
+#[cfg(not(target_os = "solana"))]
+impl From<&BlockTimestamp> for LegacyBlockTimestamp {
+    fn from(ts: &BlockTimestamp) -> Self {
+        LegacyBlockTimestamp {
+            slot: ts.slot(),
+            timestamp: ts.timestamp(),
+        }
+    }
+}
+
 impl VoteState {
     const VOTE_STATE_VERSION: u8 = 1;
 
@@ -162,6 +176,19 @@ impl VoteState {
         self.commission
     }
 
+    /// The authorized voter for the given epoch
+    pub fn get_authorized_voter(&self, epoch: Epoch) -> Option<Pubkey> {
+        if let Some(av) = self.next_authorized_voter {
+            if epoch >= av.epoch() {
+                return Some(av.voter);
+            }
+        }
+        if epoch >= self.authorized_voter.epoch() {
+            return Some(self.authorized_voter.voter);
+        }
+        None
+    }
+
     /// The signer for vote transactions in this epoch
     pub fn authorized_voter(&self) -> &AuthorizedVoter {
         &self.authorized_voter
@@ -182,9 +209,16 @@ impl VoteState {
         &self.latest_timestamp
     }
 
+    /// Most recent timestamp submitted with a vote
+    #[cfg(not(target_os = "solana"))]
+    pub fn latest_timestamp_legacy_format(&self) -> LegacyBlockTimestamp {
+        LegacyBlockTimestamp::from(&self.latest_timestamp)
+    }
+
     /// The latest notarized slot
-    pub fn latest_notarized_slot(&self) -> Slot {
-        Slot::from(self.latest_notarized_slot)
+    pub fn latest_notarized_slot(&self) -> Option<Slot> {
+        let slot = Slot::from(self.latest_notarized_slot);
+        (slot > 0).then_some(slot)
     }
 
     /// The latest notarized block_id
@@ -198,8 +232,9 @@ impl VoteState {
     }
 
     /// The latest finalized slot
-    pub fn latest_finalized_slot(&self) -> Slot {
-        Slot::from(self.latest_finalized_slot)
+    pub fn latest_finalized_slot(&self) -> Option<Slot> {
+        let slot = Slot::from(self.latest_finalized_slot);
+        (slot > 0).then_some(slot)
     }
 
     /// The latest finalized block_id
