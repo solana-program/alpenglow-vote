@@ -150,6 +150,20 @@ impl VoteState {
         Ok(())
     }
 
+    /// Deserialize a vote state from input data.
+    /// Callers can use this with the `data` field from an `AccountInfo`
+    pub fn deserialize(vote_account_data: &[u8]) -> &VoteState {
+        bytemuck::from_bytes::<VoteState>(vote_account_data)
+    }
+
+    /// Serializes a vote state into an output buffer
+    /// Callers can use this with the mutable reference to `data` from
+    /// an `AccountInfo`
+    #[cfg(not(target_os = "solana"))]
+    pub fn serialize_into(&self, vote_account_data: &mut [u8]) {
+        vote_account_data.copy_from_slice(bytemuck::bytes_of(self))
+    }
+
     /// The size of the vote account that stores this VoteState
     pub const fn size() -> usize {
         std::mem::size_of::<VoteState>()
