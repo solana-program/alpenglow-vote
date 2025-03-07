@@ -132,6 +132,27 @@ impl VoteState {
         }
     }
 
+    /// Create a new vote state for tests
+    pub fn new_for_tests(
+        node_pubkey: Pubkey,
+        authorized_voter: Pubkey,
+        epoch: Epoch,
+        authorized_withdrawer: Pubkey,
+        commission: u8,
+    ) -> Self {
+        Self {
+            version: Self::VOTE_STATE_VERSION,
+            node_pubkey,
+            authorized_voter: AuthorizedVoter {
+                epoch: PodU64::from(epoch),
+                voter: authorized_voter,
+            },
+            authorized_withdrawer,
+            commission,
+            ..VoteState::default()
+        }
+    }
+
     pub(crate) fn is_initialized(&self) -> bool {
         self.version > 0
     }
@@ -152,8 +173,8 @@ impl VoteState {
 
     /// Deserialize a vote state from input data.
     /// Callers can use this with the `data` field from an `AccountInfo`
-    pub fn deserialize(vote_account_data: &[u8]) -> &VoteState {
-        bytemuck::from_bytes::<VoteState>(vote_account_data)
+    pub fn deserialize(vote_account_data: &[u8]) -> Result<&VoteState, ProgramError> {
+        spl_pod::bytemuck::pod_from_bytes::<VoteState>(vote_account_data)
     }
 
     /// Serializes a vote state into an output buffer
