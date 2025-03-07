@@ -18,4 +18,4 @@ updates:
     interval: daily
     time: "09:00"
     timezone: UTC
-  open-pull-requests-limit: 6
+  open-pull-requests-limit: 0
