@@ -45,6 +45,10 @@ pub enum VoteError {
     #[error("Skip end slot is lower than the skip start slot")]
     SkipEndSlotLowerThanSkipStartSlot,
 
+    /// New skip range overlaps with previous
+    #[error("Skip range overlaps")]
+    SkipRangeOverlaps,
+
     /// Skip slot range contains finalization vote
     #[error("Skip slot range contains finalization vote")]
     SkipSlotRangeContainsFinalizationVote,

@@ -334,14 +334,24 @@ pub(crate) fn process_skip_vote(
     }
 
     let (vote_start_slot, vote_end_slot) = (Slot::from(vote.start_slot), Slot::from(vote.end_slot));
+    let (prev_start_slot, prev_end_slot) = vote_state.latest_skip_range();
 
     if vote_end_slot < vote_start_slot {
         return Err(VoteError::SkipEndSlotLowerThanSkipStartSlot.into());
     }
 
+    // TODO(ashwin): remove when optimizing (slashing can handle this)
     let latest_finalized_slot = Slot::from(vote_state.latest_finalized_slot);
     if vote_start_slot <= latest_finalized_slot && latest_finalized_slot <= vote_end_slot {
         return Err(VoteError::SkipSlotRangeContainsFinalizationVote.into());
+    }
+
+    if prev_end_slot >= vote_end_slot {
+        return Err(VoteError::VoteTooOld.into());
+    }
+
+    if vote_start_slot != prev_start_slot && vote_start_slot <= prev_end_slot {
+        return Err(VoteError::SkipRangeOverlaps.into());
     }
 
     process_skip_credits(
