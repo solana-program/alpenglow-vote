@@ -20,6 +20,27 @@ const advisories = [
   // URL:       https://rustsec.org/advisories/RUSTSEC-2024-0376
   // Solution:  Upgrade to >=0.12.3
   'RUSTSEC-2024-0376',
+
+  // Crate:     ring
+  // Version:   0.16.20
+  // Title:     Some AES functions may panic when overflow checking is enabled.
+  // Date:      2025-03-06
+  // ID:        RUSTSEC-2025-0009
+  // URL:       https://rustsec.org/advisories/RUSTSEC-2025-0009
+  // Solution:  Upgrade to >=0.17.12
+  // Dependency tree:
+  // ring 0.16.20
+  //
+  // Crate:     ring
+  // Version:   0.17.3
+  // Title:     Some AES functions may panic when overflow checking is enabled.
+  // Date:      2025-03-06
+  // ID:        RUSTSEC-2025-0009
+  // URL:       https://rustsec.org/advisories/RUSTSEC-2025-0009
+  // Solution:  Upgrade to >=0.17.12
+  // Dependency tree:
+  // ring 0.17.3
+  'RUSTSEC-2025-0009',
 ];
 const ignores = []
 advisories.forEach(x => {
