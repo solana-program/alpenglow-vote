@@ -15,7 +15,10 @@ use crate::accounting::{AuthorizedVoter, EpochCredit};
 use crate::instruction::InitializeAccountInstructionData;
 
 #[cfg(not(target_os = "solana"))]
-use solana_vote_interface::state::BlockTimestamp as LegacyBlockTimestamp;
+use {
+    solana_account::AccountSharedData, solana_account::WritableAccount,
+    solana_vote_interface::state::BlockTimestamp as LegacyBlockTimestamp,
+};
 
 pub(crate) type PodEpoch = PodU64;
 pub(crate) type PodSlot = PodU64;
@@ -153,6 +156,27 @@ impl VoteState {
         }
     }
 
+    /// Create a new vote state and wrap it in an account
+    #[cfg(not(target_os = "solana"))]
+    pub fn create_account_with_authorized(
+        node_pubkey: &Pubkey,
+        authorized_voter: &Pubkey,
+        authorized_withdrawer: &Pubkey,
+        commission: u8,
+        lamports: u64,
+    ) -> AccountSharedData {
+        let mut account = AccountSharedData::new(lamports, Self::size(), &crate::id());
+        let vote_state = Self::new_for_tests(
+            *node_pubkey,
+            *authorized_voter,
+            0, // Epoch
+            *authorized_withdrawer,
+            commission,
+        );
+        vote_state.serialize_into(account.data_as_mut_slice());
+        account
+    }
+
     pub(crate) fn is_initialized(&self) -> bool {
         self.version > 0
     }
@@ -161,10 +185,6 @@ impl VoteState {
         vote_account: &AccountInfo,
         vote_state: &VoteState,
     ) -> Result<(), ProgramError> {
-        if u64::from(vote_state.authorized_voter.epoch) == 0 {
-            // TODO: put this in a better place
-            return Err(ProgramError::InvalidArgument);
-        }
         vote_account
             .try_borrow_mut_data()?
             .copy_from_slice(bytemuck::bytes_of(vote_state));
