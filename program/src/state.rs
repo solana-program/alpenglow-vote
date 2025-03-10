@@ -312,6 +312,14 @@ impl VoteState {
         Slot::from(self.latest_skip_end_slot)
     }
 
+    /// The latest skip range (inclusive)
+    pub fn latest_skip_range(&self) -> (Slot, Slot) {
+        (
+            Slot::from(self.latest_skip_start_slot),
+            Slot::from(self.latest_skip_end_slot),
+        )
+    }
+
     /// Set the node_pubkey
     pub fn set_node_pubkey(&mut self, node_pubkey: Pubkey) {
         self.node_pubkey = node_pubkey
