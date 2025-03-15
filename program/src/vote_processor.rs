@@ -747,13 +747,13 @@ mod tests {
         assert_eq!(0, vote_state.epoch_credits().credits());
         assert_eq!(0, vote_state.epoch_credits().prev_credits());
 
-        let vote_slot = clock.slot - latency;
+        let vote_slot = clock.slot.checked_sub(latency).unwrap();
 
         assert!(process_notarization_finalization_credits(
             &mut vote_state,
             &clock,
             vote_slot,
-            &&epoch_schedule
+            &epoch_schedule
         )
         .is_ok());
 
