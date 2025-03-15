@@ -200,12 +200,11 @@ fn process_skip_credits(
         // were skipped.
         if hash.is_none() && skip_slot != clock.slot {
             // NOTE: clock.slot >= vote_end_slot >= skip_slot. Eventually, just use unchecked_sub.
-            let cur_credits_to_award = clock.slot.saturating_sub(skip_slot);
+            let cur_credits_to_award = latency_to_credits(clock.slot.saturating_sub(skip_slot));
 
             // NOTE: earned_credits per slot << u64::MAX, so we're fine here. Eventually, just use
             // unchecked_add.
-            earned_credits =
-                earned_credits.saturating_add(latency_to_credits(cur_credits_to_award));
+            earned_credits = earned_credits.saturating_add(cur_credits_to_award);
 
             latest_vote_slot = skip_slot;
         }
@@ -214,6 +213,18 @@ fn process_skip_credits(
     award_credits(vote_state, latest_vote_slot, earned_credits, epoch_schedule)?;
 
     Ok(())
+}
+
+fn process_notarization_finalization_credits(
+    vote_state: &mut VoteState,
+    clock: &Clock,
+    vote_slot: u64,
+    epoch_schedule: &EpochSchedule,
+) -> Result<(), ProgramError> {
+    // NOTE: clock.slot >= vote_slot; otherwise, replay_bank_hash_checks would have returned an
+    // error (vote.slot would not be in our slot hashes). Eventually, just use unchecked_sub.
+    let earned_credits = latency_to_credits(clock.slot.saturating_sub(vote_slot));
+    award_credits(vote_state, vote_slot, earned_credits, epoch_schedule)
 }
 
 pub(crate) fn process_notarization_vote(
@@ -261,12 +272,7 @@ pub(crate) fn process_notarization_vote(
         }
     }
 
-    // NOTE: clock.slot >= vote_slot; otherwise, replay_bank_hash_checks would have returned an
-    // error (vote.slot would not be in our slot hashes). Eventually, just use unchecked_sub.
-    let earned_credits = clock.slot.saturating_sub(vote_slot);
-    award_credits(vote_state, vote_slot, earned_credits, epoch_schedule)?;
-
-    Ok(())
+    process_notarization_finalization_credits(vote_state, clock, vote_slot, epoch_schedule)
 }
 
 pub(crate) fn process_finalization_vote(
@@ -306,12 +312,7 @@ pub(crate) fn process_finalization_vote(
     vote_state.latest_finalized_block_id = vote.block_id;
     vote_state.latest_finalized_bank_hash = vote.replayed_bank_hash;
 
-    // NOTE: clock.slot >= vote_slot; otherwise, replay_bank_hash_checks would have returned an
-    // error (vote.slot would not be in our slot hashes). Eventually, just use unchecked_sub.
-    let earned_credits = clock.slot.saturating_sub(vote_slot);
-    award_credits(vote_state, vote_slot, earned_credits, epoch_schedule)?;
-
-    Ok(())
+    process_notarization_finalization_credits(vote_state, clock, vote_slot, epoch_schedule)
 }
 
 pub(crate) fn process_skip_vote(
@@ -384,7 +385,7 @@ mod tests {
     use test_case::test_case;
 
     use crate::accounting::EpochCredit;
-    use crate::vote_processor::award_credits;
+    use crate::vote_processor::{award_credits, process_notarization_finalization_credits};
     use crate::{
         instruction::InitializeAccountInstructionData,
         state::VoteState,
@@ -718,6 +719,50 @@ mod tests {
         // vote_slot = clock.slot - 4 => 14 credits
         // vote_slot = clock.slot - 5 => 13 credits
         assert_eq!(74, vote_state.epoch_credits().credits());
+        assert_eq!(0, vote_state.epoch_credits().prev_credits());
+    }
+
+    #[test_case(1; "one")]
+    #[test_case(2; "two")]
+    #[test_case(3; "three")]
+    #[test_case(4; "four")]
+    #[test_case(5; "five")]
+    #[test_case(10; "ten")]
+    #[test_case(12; "twelve")]
+    #[test_case(14; "fourteen")]
+    #[test_case(16; "sixteen")]
+    #[test_case(18; "eighteen")]
+    #[test_case(20; "twenty")]
+    #[serial]
+    fn test_process_notarization_finalization_credits_simple(latency: u64) {
+        let epoch_schedule = EpochSchedule::default();
+
+        let clock = Clock {
+            slot: epoch_to_starting_slot(256),
+            epoch: 256,
+            ..Clock::default()
+        };
+
+        let mut vote_state = setup_vote_state(&clock);
+        assert_eq!(0, vote_state.epoch_credits().credits());
+        assert_eq!(0, vote_state.epoch_credits().prev_credits());
+
+        let vote_slot = clock.slot - latency;
+
+        assert!(process_notarization_finalization_credits(
+            &mut vote_state,
+            &clock,
+            vote_slot,
+            &&epoch_schedule
+        )
+        .is_ok());
+
+        let expected_awarded_credits = latency_to_credits(latency);
+
+        assert_eq!(
+            expected_awarded_credits,
+            vote_state.epoch_credits().credits()
+        );
         assert_eq!(0, vote_state.epoch_credits().prev_credits());
     }
 }
