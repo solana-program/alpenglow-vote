@@ -177,7 +177,7 @@ impl VoteState {
         account
     }
 
-    pub(crate) fn is_initialized(&self) -> bool {
+    pub fn is_initialized(&self) -> bool {
         self.version > 0
     }
 
