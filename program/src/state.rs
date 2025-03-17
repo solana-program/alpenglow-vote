@@ -177,6 +177,7 @@ impl VoteState {
         account
     }
 
+    /// Return whether the vote account is initialized
     pub fn is_initialized(&self) -> bool {
         self.version > 0
     }
