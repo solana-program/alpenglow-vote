@@ -61,10 +61,6 @@ pub enum VoteError {
     #[error("Timestamp is too old")]
     TimestampTooOld,
 
-    /// Unreachable error
-    #[error("Unreachable error")]
-    Unreachable,
-
     /// Version mismatch
     #[error("Version mismatch")]
     VersionMismatch,

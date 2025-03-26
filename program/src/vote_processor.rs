@@ -1,11 +1,8 @@
-use std::cmp::Ordering;
-
 use bytemuck::{Pod, Zeroable};
 use solana_program::account_info::AccountInfo;
 use solana_program::clock::Clock;
 use solana_program::clock::Slot;
 use solana_program::clock::UnixTimestamp;
-use solana_program::epoch_schedule::EpochSchedule;
 use solana_program::hash::Hash;
 use solana_program::program_error::ProgramError;
 use solana_program::pubkey::Pubkey;
@@ -137,35 +134,23 @@ fn latency_to_credits(latency: u64) -> u64 {
 
 fn award_credits(
     vote_state: &mut VoteState,
-    latest_vote_slot: u64,
+    epoch: u64,
     earned_credits: u64,
-    epoch_schedule: &EpochSchedule,
 ) -> Result<(), ProgramError> {
-    let vote_epoch = epoch_schedule.get_epoch(latest_vote_slot);
-
     let epoch_credits = &mut vote_state.epoch_credits;
 
-    match vote_epoch.cmp(&epoch_credits.epoch()) {
-        Ordering::Equal => {
-            epoch_credits.set_credits(epoch_credits.credits().saturating_add(earned_credits));
-            Ok(())
-        }
-        Ordering::Less => {
-            // We can't have that vote_epoch < epoch_credits.epoch(), since that would imply that
-            // we've received a vote for a slot that is lesser than what we've received in the
-            // past, and we would have returned an error prior to award_credits having been called.
-            Err(VoteError::Unreachable.into())
-        }
-        Ordering::Greater => {
-            let prev_credits = epoch_credits
-                .prev_credits()
-                .saturating_add(epoch_credits.credits());
+    if epoch == epoch_credits.epoch() {
+        epoch_credits.set_credits(epoch_credits.credits().saturating_add(earned_credits));
+        Ok(())
+    } else {
+        let prev_credits = epoch_credits
+            .prev_credits()
+            .saturating_add(epoch_credits.credits());
 
-            epoch_credits.set_epoch(vote_epoch);
-            epoch_credits.set_prev_credits(prev_credits);
-            epoch_credits.set_credits(earned_credits);
-            Ok(())
-        }
+        epoch_credits.set_epoch(epoch);
+        epoch_credits.set_prev_credits(prev_credits);
+        epoch_credits.set_credits(earned_credits.saturating_add(prev_credits));
+        Ok(())
     }
 }
 
@@ -176,7 +161,6 @@ fn process_skip_credits(
     vote_end_slot: u64,
     clock: &Clock,
     slot_hashes: &PodSlotHashes,
-    epoch_schedule: &EpochSchedule,
 ) -> Result<(), ProgramError> {
     if vote_end_slot > clock.slot {
         return Err(VoteError::SkipEndSlotExceedsCurrentSlot.into());
@@ -188,7 +172,6 @@ fn process_skip_credits(
         .max(vote_start_slot);
 
     let mut earned_credits = 0_u64;
-    let mut latest_vote_slot = 0_u64;
 
     for skip_slot in eligible_skip_start..=vote_end_slot {
         let hash = slot_hashes
@@ -205,12 +188,10 @@ fn process_skip_credits(
             // NOTE: earned_credits per slot << u64::MAX, so we're fine here. Eventually, just use
             // unchecked_add.
             earned_credits = earned_credits.saturating_add(cur_credits_to_award);
-
-            latest_vote_slot = skip_slot;
         }
     }
 
-    award_credits(vote_state, latest_vote_slot, earned_credits, epoch_schedule)?;
+    award_credits(vote_state, clock.epoch, earned_credits)?;
 
     Ok(())
 }
@@ -219,12 +200,14 @@ fn process_notarization_finalization_credits(
     vote_state: &mut VoteState,
     clock: &Clock,
     vote_slot: u64,
-    epoch_schedule: &EpochSchedule,
 ) -> Result<(), ProgramError> {
     // NOTE: clock.slot >= vote_slot; otherwise, replay_bank_hash_checks would have returned an
     // error (vote.slot would not be in our slot hashes). Eventually, just use unchecked_sub.
     let earned_credits = latency_to_credits(clock.slot.saturating_sub(vote_slot));
-    award_credits(vote_state, vote_slot, earned_credits, epoch_schedule)
+    // Although this vote might be for a previous epoch, the checks in the caller
+    // ensure that this is a new vote. We mirror the logic in the previous vote
+    // program and award credits based on `clock.epoch`
+    award_credits(vote_state, clock.epoch, earned_credits)
 }
 
 pub(crate) fn process_notarization_vote(
@@ -232,7 +215,6 @@ pub(crate) fn process_notarization_vote(
     vote_authority: &Pubkey,
     clock: &Clock,
     slot_hashes: &PodSlotHashes,
-    epoch_schedule: &EpochSchedule,
     vote: &NotarizationVoteInstructionData,
 ) -> Result<(), ProgramError> {
     let mut vote_state = vote_account.data.borrow_mut();
@@ -272,7 +254,7 @@ pub(crate) fn process_notarization_vote(
         }
     }
 
-    process_notarization_finalization_credits(vote_state, clock, vote_slot, epoch_schedule)
+    process_notarization_finalization_credits(vote_state, clock, vote_slot)
 }
 
 pub(crate) fn process_finalization_vote(
@@ -280,7 +262,6 @@ pub(crate) fn process_finalization_vote(
     vote_authority: &Pubkey,
     clock: &Clock,
     slot_hashes: &PodSlotHashes,
-    epoch_schedule: &EpochSchedule,
     vote: &FinalizationVoteInstructionData,
 ) -> Result<(), ProgramError> {
     let mut vote_state = vote_account.data.borrow_mut();
@@ -312,7 +293,7 @@ pub(crate) fn process_finalization_vote(
     vote_state.latest_finalized_block_id = vote.block_id;
     vote_state.latest_finalized_bank_hash = vote.replayed_bank_hash;
 
-    process_notarization_finalization_credits(vote_state, clock, vote_slot, epoch_schedule)
+    process_notarization_finalization_credits(vote_state, clock, vote_slot)
 }
 
 pub(crate) fn process_skip_vote(
@@ -320,7 +301,6 @@ pub(crate) fn process_skip_vote(
     vote_authority: &Pubkey,
     clock: &Clock,
     slot_hashes: &PodSlotHashes,
-    epoch_schedule: &EpochSchedule,
     vote: &SkipVoteInstructionData,
 ) -> Result<(), ProgramError> {
     let mut vote_state = vote_account.data.borrow_mut();
@@ -361,7 +341,6 @@ pub(crate) fn process_skip_vote(
         vote.end_slot.into(),
         clock,
         slot_hashes,
-        epoch_schedule,
     )?;
 
     vote_state.latest_skip_start_slot = vote.start_slot;
@@ -508,13 +487,7 @@ mod tests {
 
         let expected_earned_credits = latency_to_credits(latency);
 
-        assert!(award_credits(
-            &mut vote_state,
-            vote_slot,
-            expected_earned_credits,
-            &EpochSchedule::default()
-        )
-        .is_ok());
+        assert!(award_credits(&mut vote_state, clock.epoch, expected_earned_credits,).is_ok());
         assert_eq!(latency, clock.slot.saturating_sub(vote_slot));
 
         assert_eq!(256, vote_state.epoch_credits.epoch());
@@ -547,13 +520,7 @@ mod tests {
 
         let expected_earned_credits = latency_to_credits(clock.slot.saturating_sub(vote_slot));
 
-        assert!(award_credits(
-            &mut vote_state,
-            vote_slot,
-            expected_earned_credits,
-            &epoch_schedule
-        )
-        .is_ok());
+        assert!(award_credits(&mut vote_state, clock.epoch, expected_earned_credits,).is_ok());
 
         assert_eq!(latency, clock.slot.saturating_sub(vote_slot));
         assert_eq!(256, vote_state.epoch_credits.epoch());
@@ -583,31 +550,26 @@ mod tests {
 
         vote_state.epoch_credits = EpochCredit {
             epoch: PodU64::from(12),
-            credits: PodU64::from(123),
-            prev_credits: PodU64::from(234),
+            credits: PodU64::from(234),
+            prev_credits: PodU64::from(123),
         };
 
         let expected_earned_credits = latency_to_credits(clock.slot.saturating_sub(vote_slot));
 
-        assert!(award_credits(
-            &mut vote_state,
-            vote_slot,
-            expected_earned_credits,
-            &epoch_schedule
-        )
-        .is_ok());
+        assert!(award_credits(&mut vote_state, clock.epoch, expected_earned_credits,).is_ok());
         assert_eq!(latency, clock.slot.saturating_sub(vote_slot));
 
-        assert_eq!(255, vote_state.epoch_credits.epoch());
+        assert_eq!(256, vote_state.epoch_credits.epoch());
         assert_eq!(123 + 234, vote_state.epoch_credits.prev_credits());
-        assert_eq!(expected_earned_credits, vote_state.epoch_credits.credits());
+        assert_eq!(
+            expected_earned_credits.saturating_add(123 + 234),
+            vote_state.epoch_credits.credits()
+        );
     }
 
     #[test]
     #[serial]
     fn test_process_skip_credits_vote_slot_cannot_be_after_clock_slot() {
-        let epoch_schedule = EpochSchedule::default();
-
         let clock = Clock {
             slot: epoch_to_starting_slot(256),
             epoch: 256,
@@ -630,7 +592,6 @@ mod tests {
             vote_end_slot,
             &clock,
             &mock_slot_hash_entries(vec![]),
-            &epoch_schedule,
         )
         .is_ok());
 
@@ -679,8 +640,6 @@ mod tests {
     #[test]
     #[serial]
     fn test_process_skip_credits_simple() {
-        let epoch_schedule = EpochSchedule::default();
-
         let clock = Clock {
             slot: epoch_to_starting_slot(256),
             epoch: 256,
@@ -703,7 +662,6 @@ mod tests {
             vote_end_slot,
             &clock,
             &mock_slot_hash_entries(vec![]),
-            &epoch_schedule,
         )
         .is_ok());
 
@@ -735,8 +693,6 @@ mod tests {
     #[test_case(20; "twenty")]
     #[serial]
     fn test_process_notarization_finalization_credits_simple(latency: u64) {
-        let epoch_schedule = EpochSchedule::default();
-
         let clock = Clock {
             slot: epoch_to_starting_slot(256),
             epoch: 256,
@@ -749,13 +705,9 @@ mod tests {
 
         let vote_slot = clock.slot.checked_sub(latency).unwrap();
 
-        assert!(process_notarization_finalization_credits(
-            &mut vote_state,
-            &clock,
-            vote_slot,
-            &epoch_schedule
-        )
-        .is_ok());
+        assert!(
+            process_notarization_finalization_credits(&mut vote_state, &clock, vote_slot,).is_ok()
+        );
 
         let expected_awarded_credits = latency_to_credits(latency);
 
