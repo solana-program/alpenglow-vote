@@ -6,7 +6,6 @@ use solana_program::{
     account_info::{next_account_info, AccountInfo},
     clock::{self, Clock},
     entrypoint::ProgramResult,
-    epoch_schedule,
     pubkey::Pubkey,
     rent,
     sysvar::Sysvar,
@@ -202,7 +201,7 @@ pub fn process_instruction(
             accounting::update_validator_identity(vote_account, new_node_pubkey, withdraw_pubkey)
         }
         VoteInstruction::UpdateCommission => {
-            let epoch_schedule = epoch_schedule::EpochSchedule::get()?;
+            let epoch_schedule = epoch_schedule()?;
             let clock = clock::Clock::get()?;
 
             let Some(withdraw_authority_pubkey) =
@@ -224,7 +223,6 @@ pub fn process_instruction(
         VoteInstruction::Notarize => {
             let clock = clock::Clock::get()?;
             let slot_hashes = pod_slot_hashes()?;
-            let es = epoch_schedule()?;
 
             let Some(authority) = next_account_info(account_info_iter)?.signer_key() else {
                 return Err(ProgramError::MissingRequiredSignature);
@@ -237,14 +235,12 @@ pub fn process_instruction(
                 authority,
                 &clock,
                 &slot_hashes,
-                &es,
                 vote,
             )
         }
         VoteInstruction::Finalize => {
             let clock = clock::Clock::get()?;
             let slot_hashes = pod_slot_hashes()?;
-            let es = epoch_schedule()?;
 
             let Some(authority) = next_account_info(account_info_iter)?.signer_key() else {
                 return Err(ProgramError::MissingRequiredSignature);
@@ -257,14 +253,12 @@ pub fn process_instruction(
                 authority,
                 &clock,
                 &slot_hashes,
-                &es,
                 vote,
             )
         }
         VoteInstruction::Skip => {
             let clock = clock::Clock::get()?;
             let slot_hashes = pod_slot_hashes()?;
-            let es = epoch_schedule()?;
 
             let Some(authority) = next_account_info(account_info_iter)?.signer_key() else {
                 return Err(ProgramError::MissingRequiredSignature);
@@ -272,14 +266,7 @@ pub fn process_instruction(
 
             let vote = decode_instruction_data::<SkipVoteInstructionData>(input)?;
 
-            vote_processor::process_skip_vote(
-                vote_account,
-                authority,
-                &clock,
-                &slot_hashes,
-                &es,
-                vote,
-            )
+            vote_processor::process_skip_vote(vote_account, authority, &clock, &slot_hashes, vote)
         }
     }
 }
