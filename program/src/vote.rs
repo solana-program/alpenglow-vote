@@ -43,13 +43,17 @@ impl Vote {
         timestamp: Option<UnixTimestamp>,
     ) -> Self {
         Self::from(NotarizationVote::new(
-            slot, block_id, slot, bank_hash, timestamp,
+            slot, block_id, 0, /*_replayed_slot not used */
+            bank_hash, timestamp,
         ))
     }
 
     /// Create a new finalization vote
     pub fn new_finalization_vote(slot: Slot, block_id: Hash, bank_hash: Hash) -> Self {
-        Self::from(FinalizationVote::new(slot, block_id, slot, bank_hash))
+        Self::from(FinalizationVote::new(
+            slot, block_id, 0, /*_replayed_slot not used */
+            bank_hash,
+        ))
     }
 
     /// Create a new skip vote
