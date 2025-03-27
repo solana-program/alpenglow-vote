@@ -9,6 +9,7 @@ use solana_program::clock::UnixTimestamp;
 use solana_program::hash::Hash;
 use solana_program::program_error::ProgramError;
 use solana_program::pubkey::Pubkey;
+use solana_program::rent::Rent;
 use spl_pod::primitives::{PodI64, PodU64};
 
 use crate::accounting::{AuthorizedVoter, EpochCredit};
@@ -243,6 +244,11 @@ impl VoteState {
             return Some(self.authorized_voter.voter);
         }
         None
+    }
+
+    /// Get rent exempt reserve
+    pub fn get_rent_exempt_reserve(rent: &Rent) -> u64 {
+        rent.minimum_balance(Self::size())
     }
 
     /// The signer for vote transactions in this epoch
