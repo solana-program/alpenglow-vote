@@ -780,6 +780,12 @@ dependencies = [
 ]
 
 [[package]]
+name = "build-print"
+version = "0.1.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "4a2128d00b7061b82b72844a351e80acd29e05afc60e9261e2ac90dca9ecc2ac"
+
+[[package]]
 name = "bumpalo"
 version = "3.17.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1721,6 +1727,25 @@ dependencies = [
  "pin-project-lite",
  "pin-utils",
  "slab",
+]
+
+[[package]]
+name = "generate-so"
+version = "0.0.0"
+dependencies = [
+ "alpenglow-vote",
+ "build-print",
+ "lazy_static",
+ "rand 0.9.0",
+ "serial_test",
+ "solana-account",
+ "solana-client",
+ "solana-entry",
+ "solana-ledger",
+ "solana-program-test",
+ "solana-sdk",
+ "solana-vote-interface",
+ "test-case",
 ]
 
 [[package]]
