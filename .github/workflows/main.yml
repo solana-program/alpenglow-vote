@@ -117,6 +117,14 @@ jobs:
           path: ./**/*.so
           key: ${{ runner.os }}-builds-${{ github.sha }}
 
+      - name: Deployed and Generated alpenglow_vote.so Match
+        uses: LouisBrunner/diff-action@v2.2.0
+        with:
+          old: ./alpenglow_vote.so
+          new: ./target/deploy/alpenglow_vote.so
+          mode: strict
+          tolerance: same
+
   test_programs:
     name: Test Programs
     runs-on: ubuntu-latest
