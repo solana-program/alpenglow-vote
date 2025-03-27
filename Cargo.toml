@@ -1,7 +1,6 @@
 [workspace]
 resolver = "2"
-# members = ["program", "generate-so"]
-members = ["generate-so"]
+members = ["program", "generate-so"]
 
 [workspace.metadata.cli]
 solana = "2.2.0"
