@@ -1,0 +1,13 @@
+[package]
+name = "generate-so"
+description = "Generate alpenglow-vote.so"
+authors = ["Anza Maintainers <maintainers@anza.xyz>"]
+repository = "https://github.com/solana-program/alpenglow-vote"
+license = "Apache-2.0"
+edition = "2021"
+
+[dependencies]
+alpenglow-vote = { path = "../program" }
+
+[lib]
+crate-type = ["cdylib", "lib"]

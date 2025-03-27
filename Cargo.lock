@@ -1724,6 +1724,13 @@ dependencies = [
 ]
 
 [[package]]
+name = "generate-so"
+version = "0.0.0"
+dependencies = [
+ "alpenglow-vote",
+]
+
+[[package]]
 name = "generic-array"
 version = "0.14.7"
 source = "registry+https://github.com/rust-lang/crates.io-index"
