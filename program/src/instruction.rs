@@ -256,9 +256,9 @@ pub fn initialize_account(
 }
 
 /// Instruction builder to create and initialize a new vote account with a valid VoteState:
-/// - `from_pubkey` the from account
+/// - `from_pubkey` the account that pays rent
 /// - `vote_pubkey` the vote account
-/// - `lamports` lamports to initialize the vote account with
+/// - `lamports` lamports to initialize the vote account with for rent
 /// - `space` space used in creating the account
 /// - `instruction_data` the vote account's account creation metadata
 pub fn create_account_with_config(
