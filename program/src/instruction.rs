@@ -18,6 +18,7 @@ use {
         instruction::{AccountMeta, Instruction},
         program_error::ProgramError,
         pubkey::Pubkey,
+        system_instruction,
     },
     spl_pod::{
         bytemuck::{pod_bytes_of, pod_from_bytes, pod_get_packed_len},
@@ -237,6 +238,7 @@ pub struct InitializeAccountInstructionData {
 
 /// Instruction builder to initialize a new vote account with a valid VoteState:
 /// - `vote_pubkey` the vote account
+/// - `instruction_data` the vote account's account creation metadata
 pub fn initialize_account(
     vote_pubkey: Pubkey,
     instruction_data: &InitializeAccountInstructionData,
@@ -251,6 +253,27 @@ pub fn initialize_account(
         VoteInstruction::InitializeAccount,
         instruction_data,
     )
+}
+
+/// Instruction builder to create and initialize a new vote account with a valid VoteState:
+/// - `from_pubkey` the from account
+/// - `vote_pubkey` the vote account
+/// - `lamports` lamports to initialize the vote account with
+/// - `space` space used in creating the account
+/// - `instruction_data` the vote account's account creation metadata
+pub fn create_account_with_config(
+    from_pubkey: &Pubkey,
+    vote_pubkey: &Pubkey,
+    lamports: u64,
+    space: u64,
+    instruction_data: InitializeAccountInstructionData,
+) -> Vec<Instruction> {
+    let create_ix =
+        system_instruction::create_account(from_pubkey, vote_pubkey, lamports, space, &id());
+
+    let init_ix = initialize_account(*vote_pubkey, &instruction_data);
+
+    vec![create_ix, init_ix]
 }
 
 /// The type of authority on the account
