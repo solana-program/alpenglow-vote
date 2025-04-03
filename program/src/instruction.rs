@@ -4,7 +4,7 @@ use {
     crate::{
         error::VoteError,
         id,
-        state::{PodSlot, PodUnixTimestamp},
+        state::{PodSlot, PodUnixTimestamp, VoteState},
         vote::{FinalizationVote, NotarizationVote, SkipVote},
         vote_processor::{
             FinalizationVoteInstructionData, NotarizationVoteInstructionData,
@@ -18,6 +18,7 @@ use {
         instruction::{AccountMeta, Instruction},
         program_error::ProgramError,
         pubkey::Pubkey,
+        rent::Rent,
         system_instruction,
     },
     spl_pod::{
@@ -256,20 +257,23 @@ pub fn initialize_account(
 }
 
 /// Instruction builder to create and initialize a new vote account with a valid VoteState:
-/// - `from_pubkey` the account that pays rent
+/// - `from_pubkey` the account that funds the rent exemption
 /// - `vote_pubkey` the vote account
-/// - `lamports` lamports to initialize the vote account with for rent
-/// - `space` space used in creating the account
+/// - `rent` network Rent details
 /// - `instruction_data` the vote account's account creation metadata
 pub fn create_account_with_config(
     from_pubkey: &Pubkey,
     vote_pubkey: &Pubkey,
-    lamports: u64,
-    space: u64,
+    rent: &Rent,
     instruction_data: InitializeAccountInstructionData,
 ) -> Vec<Instruction> {
-    let create_ix =
-        system_instruction::create_account(from_pubkey, vote_pubkey, lamports, space, &id());
+    let create_ix = system_instruction::create_account(
+        from_pubkey,
+        vote_pubkey,
+        rent.minimum_balance(VoteState::size()),
+        VoteState::size() as u64,
+        &id(),
+    );
 
     let init_ix = initialize_account(*vote_pubkey, &instruction_data);
 
