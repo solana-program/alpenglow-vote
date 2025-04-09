@@ -57,6 +57,7 @@ solana-program-runtime = ">=2.0.0, <2.2.6"
 solana-program-test = "2.2.1"
 solana-sdk = "2.2.1"
 test-case = "3.3.1"
+mollusk-svm = "0.1.4"
 
 [lib]
 crate-type = ["cdylib", "lib"]

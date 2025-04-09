@@ -261,16 +261,19 @@ pub fn initialize_account(
 /// - `vote_pubkey` the vote account
 /// - `rent` network Rent details
 /// - `instruction_data` the vote account's account creation metadata
-pub fn create_account_with_config(
+/// - `excess_lamports` if set to `Some(val)`, funds `val` extra lamports for rent
+pub fn create_account_with_config_excess_lamports(
     from_pubkey: &Pubkey,
     vote_pubkey: &Pubkey,
     rent: &Rent,
     instruction_data: InitializeAccountInstructionData,
+    excess_lamports: Option<u64>,
 ) -> Vec<Instruction> {
     let create_ix = system_instruction::create_account(
         from_pubkey,
         vote_pubkey,
-        rent.minimum_balance(VoteState::size()),
+        rent.minimum_balance(VoteState::size())
+            .saturating_add(excess_lamports.unwrap_or(0)),
         VoteState::size() as u64,
         &id(),
     );
@@ -278,6 +281,26 @@ pub fn create_account_with_config(
     let init_ix = initialize_account(*vote_pubkey, &instruction_data);
 
     vec![create_ix, init_ix]
+}
+
+/// Instruction builder to create and initialize a new vote account with a valid VoteState:
+/// - `from_pubkey` the account that funds the rent exemption
+/// - `vote_pubkey` the vote account
+/// - `rent` network Rent details
+/// - `instruction_data` the vote account's account creation metadata
+pub fn create_account_with_config(
+    from_pubkey: &Pubkey,
+    vote_pubkey: &Pubkey,
+    rent: &Rent,
+    instruction_data: InitializeAccountInstructionData,
+) -> Vec<Instruction> {
+    create_account_with_config_excess_lamports(
+        from_pubkey,
+        vote_pubkey,
+        rent,
+        instruction_data,
+        None,
+    )
 }
 
 /// The type of authority on the account
