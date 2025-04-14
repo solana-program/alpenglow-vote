@@ -29,32 +29,33 @@ num-traits = "0.2"
 num_enum = "0.7.3"
 serde = { version = "1.0.217", optional = true } # must match the serde_derive version, see https://github.com/serde-rs/serde/issues/2584#issuecomment-1685252251
 serde_derive = { version = "1.0.217", optional = true } # must match the serde version, see https://github.com/serde-rs/serde/issues/2584#issuecomment-1685252251
-solana-frozen-abi = { version = "2.2.0", optional = true, features = [
+solana-frozen-abi = { version = "2.2.1", optional = true, features = [
     "frozen-abi",
 ] }
-solana-frozen-abi-macro = { version = "2.2.0", optional = true, features = [
+solana-frozen-abi-macro = { version = "2.2.1", optional = true, features = [
     "frozen-abi",
 ] }
-solana-hash = "2.2.0"
-solana-logger = { version = "2.2.0", optional = true }
-solana-program = "2.2.0"
-solana-signature = "2.2.0"
+solana-hash = "2.2.1"
+solana-logger = { version = "2.2.1", optional = true }
+solana-program = "2.2.1"
+solana-signature = "2.2.1"
 spl-pod = "0.5.0"
 thiserror = "2.0"
 
 [target.'cfg(not(target_os = "solana"))'.dependencies]
-solana-vote-interface = "2.2.0"
-solana-account = "2.2.0"
+solana-vote-interface = "2.2.1"
+solana-account = "2.2.1"
 
 [dev-dependencies]
 lazy_static = "1.5.0"
 rand = "0.9.0"
 serial_test = "3.2.0"
-solana-client = "2.2.0"
-solana-entry = "2.2.0"
-solana-ledger = "2.2.0"
-solana-program-test = "2.2.0"
-solana-sdk = "2.2.0"
+solana-client = "2.2.1"
+solana-entry = "2.2.1"
+solana-ledger = "2.2.1"
+solana-program-runtime = ">=2.0.0, <2.2.6"
+solana-program-test = "2.2.1"
+solana-sdk = "2.2.1"
 test-case = "3.3.1"
 
 [lib]
