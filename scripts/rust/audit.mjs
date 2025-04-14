@@ -50,6 +50,15 @@ const advisories = [
     // URL:       https://rustsec.org/advisories/RUSTSEC-2025-0022
     // Solution:  Upgrade to >=0.10.72
     "RUSTSEC-2025-0022",
+
+    // Crate:     crossbeam-channel
+    // Version:   0.5.14
+    // Title:     crossbeam-channel: double free on Drop
+    // Date:      2025-04-08
+    // ID:        RUSTSEC-2025-0024
+    // URL:       https://rustsec.org/advisories/RUSTSEC-2025-0024
+    // Solution:  Upgrade to >=0.5.15
+    "RUSTSEC-2025-0024",
 ];
 const ignores = [];
 advisories.forEach((x) => {
