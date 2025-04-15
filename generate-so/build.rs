@@ -23,5 +23,11 @@ fn main() {
     );
 
     // copy from src to dest
-    fs::copy(deploy_so_path, dest_path).expect("Couldn't copy spl-alpenglow_vote.so.");
+    fs::copy(&deploy_so_path, &dest_path).unwrap_or_else(|_| {
+        panic!(
+            "Couldn't copy spl-alpenglow_vote.so from {} to {}.",
+            &deploy_so_path.display(),
+            &dest_path.display()
+        )
+    });
 }
