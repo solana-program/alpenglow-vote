@@ -143,6 +143,7 @@ dependencies = [
  "either",
  "lazy_static",
  "mollusk-svm",
+ "mollusk-svm-bencher",
  "num-derive",
  "num-traits",
  "num_enum",
@@ -2840,6 +2841,21 @@ dependencies = [
 ]
 
 [[package]]
+name = "mollusk-svm-bencher"
+version = "0.1.4"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "4c1a24dfb06455046e5d43e5c66d73f8ebf4764cac11c1f4a877f5f9678f1445"
+dependencies = [
+ "chrono",
+ "mollusk-svm",
+ "num-format",
+ "serde_json",
+ "solana-account",
+ "solana-instruction",
+ "solana-pubkey",
+]
+
+[[package]]
 name = "mollusk-svm-error"
 version = "0.1.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2986,6 +3002,16 @@ dependencies = [
  "proc-macro2",
  "quote",
  "syn 2.0.99",
+]
+
+[[package]]
+name = "num-format"
+version = "0.4.4"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "a652d9771a63711fd3c3deb670acfbe5c30a4072e664d7a3bf5a9e1056ac72c3"
+dependencies = [
+ "arrayvec",
+ "itoa",
 ]
 
 [[package]]
