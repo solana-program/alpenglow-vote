@@ -19,9 +19,9 @@ use crate::instruction::{
     AuthorityType, AuthorizeCheckedWithSeedInstructionData, AuthorizeInstructionData,
     AuthorizeWithSeedInstructionData, InitializeAccountInstructionData, VoteInstruction,
 };
-use crate::state::VoteState;
+use crate::state::{PodSlot, VoteState};
 use crate::vote_processor::{
-    self, FinalizationVoteInstructionData, NotarizationVoteInstructionData, SkipVoteInstructionData,
+    self, FinalizationVoteInstructionData, NotarizationVoteInstructionData,
 };
 
 fn pod_slot_hashes() -> Result<PodSlotHashes, VoteError> {
@@ -238,6 +238,24 @@ pub fn process_instruction(
                 vote,
             )
         }
+        VoteInstruction::NotarizeFallback => {
+            let clock = clock::Clock::get()?;
+            let slot_hashes = pod_slot_hashes()?;
+
+            let Some(authority) = next_account_info(account_info_iter)?.signer_key() else {
+                return Err(ProgramError::MissingRequiredSignature);
+            };
+
+            let vote = decode_instruction_data::<NotarizationVoteInstructionData>(input)?;
+
+            vote_processor::process_notarization_vote(
+                vote_account,
+                authority,
+                &clock,
+                &slot_hashes,
+                vote,
+            )
+        }
         VoteInstruction::Finalize => {
             let clock = clock::Clock::get()?;
             let slot_hashes = pod_slot_hashes()?;
@@ -264,7 +282,19 @@ pub fn process_instruction(
                 return Err(ProgramError::MissingRequiredSignature);
             };
 
-            let vote = decode_instruction_data::<SkipVoteInstructionData>(input)?;
+            let vote = decode_instruction_data::<PodSlot>(input)?;
+
+            vote_processor::process_skip_vote(vote_account, authority, &clock, &slot_hashes, vote)
+        }
+        VoteInstruction::SkipFallback => {
+            let clock = clock::Clock::get()?;
+            let slot_hashes = pod_slot_hashes()?;
+
+            let Some(authority) = next_account_info(account_info_iter)?.signer_key() else {
+                return Err(ProgramError::MissingRequiredSignature);
+            };
+
+            let vote = decode_instruction_data::<PodSlot>(input)?;
 
             vote_processor::process_skip_vote(vote_account, authority, &clock, &slot_hashes, vote)
         }

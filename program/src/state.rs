@@ -52,33 +52,6 @@ pub struct VoteState {
     /// How many credits this validator is earning in this Epoch
     pub(crate) epoch_credits: EpochCredit,
 
-    /// Most recent timestamp submitted with a notarization vote
-    pub(crate) latest_timestamp: BlockTimestamp,
-
-    /// The latest notarized slot
-    pub(crate) latest_notarized_slot: PodSlot,
-
-    /// The latest notarized block_id
-    pub(crate) latest_notarized_block_id: Hash,
-
-    /// The latest notarized bank_hash
-    pub(crate) latest_notarized_bank_hash: Hash,
-
-    /// The latest finalized slot
-    pub(crate) latest_finalized_slot: PodSlot,
-
-    /// The latest finalized block_id
-    pub(crate) latest_finalized_block_id: Hash,
-
-    /// The latest finalized bank_hash
-    pub(crate) latest_finalized_bank_hash: Hash,
-
-    /// The latest skip range start slot
-    pub(crate) latest_skip_start_slot: PodSlot,
-
-    /// The latest skip range end slot (inclusive)
-    pub(crate) latest_skip_end_slot: PodSlot,
-
     /// The slot of the latest replayed block
     /// Only relevant after APE
     pub(crate) _replayed_slot: PodSlot,
@@ -267,64 +240,10 @@ impl VoteState {
     }
 
     /// Most recent timestamp submitted with a vote
-    pub fn latest_timestamp(&self) -> &BlockTimestamp {
-        &self.latest_timestamp
-    }
-
-    /// Most recent timestamp submitted with a vote
     #[cfg(not(target_os = "solana"))]
     pub fn latest_timestamp_legacy_format(&self) -> LegacyBlockTimestamp {
-        LegacyBlockTimestamp::from(&self.latest_timestamp)
-    }
-
-    /// The latest notarized slot
-    pub fn latest_notarized_slot(&self) -> Option<Slot> {
-        let slot = Slot::from(self.latest_notarized_slot);
-        (slot > 0).then_some(slot)
-    }
-
-    /// The latest notarized block_id
-    pub fn latest_notarized_block_id(&self) -> &Hash {
-        &self.latest_notarized_block_id
-    }
-
-    /// The latest notarized bank_hash
-    pub fn latest_notarized_bank_hash(&self) -> &Hash {
-        &self.latest_notarized_bank_hash
-    }
-
-    /// The latest finalized slot
-    pub fn latest_finalized_slot(&self) -> Option<Slot> {
-        let slot = Slot::from(self.latest_finalized_slot);
-        (slot > 0).then_some(slot)
-    }
-
-    /// The latest finalized block_id
-    pub fn latest_finalized_block_id(&self) -> &Hash {
-        &self.latest_finalized_block_id
-    }
-
-    /// The latest notarized bank_hash
-    pub fn latest_finalized_bank_hash(&self) -> &Hash {
-        &self.latest_finalized_bank_hash
-    }
-
-    /// The latest skip range start slot
-    pub fn latest_skip_start_slot(&self) -> Slot {
-        Slot::from(self.latest_skip_start_slot)
-    }
-
-    /// The latest skip range end slot
-    pub fn latest_skip_end_slot(&self) -> Slot {
-        Slot::from(self.latest_skip_end_slot)
-    }
-
-    /// The latest skip range (inclusive)
-    pub fn latest_skip_range(&self) -> (Slot, Slot) {
-        (
-            Slot::from(self.latest_skip_start_slot),
-            Slot::from(self.latest_skip_end_slot),
-        )
+        // TODO: fix once we figure out how to do timestamps in BLS
+        LegacyBlockTimestamp::from(&BlockTimestamp::default())
     }
 
     /// Set the node_pubkey
@@ -355,53 +274,5 @@ impl VoteState {
     /// Set the epoch credits
     pub fn set_epoch_credits(&mut self, epoch_credits: EpochCredit) {
         self.epoch_credits = epoch_credits
-    }
-
-    /// Set the latest timestamp
-    pub fn set_latest_timestamp(&mut self, slot: Slot, timestamp: UnixTimestamp) {
-        self.latest_timestamp = BlockTimestamp {
-            slot: PodSlot::from(slot),
-            timestamp: PodUnixTimestamp::from(timestamp),
-        }
-    }
-
-    /// Set the latest notarized slot
-    pub fn set_latest_notarized_slot(&mut self, latest_notarized_slot: Slot) {
-        self.latest_notarized_slot = PodSlot::from(latest_notarized_slot)
-    }
-
-    /// Set the latest notarized block id
-    pub fn set_latest_notarized_block_id(&mut self, latest_notarized_block_id: Hash) {
-        self.latest_notarized_block_id = latest_notarized_block_id
-    }
-
-    /// Set the latest notarized bank hash
-    pub fn set_latest_notarized_bank_hash(&mut self, latest_notarized_bank_hash: Hash) {
-        self.latest_notarized_bank_hash = latest_notarized_bank_hash
-    }
-
-    /// Set the latest finalized slot
-    pub fn set_latest_finalized_slot(&mut self, latest_finalized_slot: Slot) {
-        self.latest_finalized_slot = PodSlot::from(latest_finalized_slot)
-    }
-
-    /// Set the latest finalized block id
-    pub fn set_latest_finalized_block_id(&mut self, latest_finalized_block_id: Hash) {
-        self.latest_finalized_block_id = latest_finalized_block_id
-    }
-
-    /// Set the latest finalized bank hash
-    pub fn set_latest_finalized_bank_hash(&mut self, latest_finalized_bank_hash: Hash) {
-        self.latest_finalized_bank_hash = latest_finalized_bank_hash
-    }
-
-    /// Set the latest skip start slot
-    pub fn set_latest_skip_start_slot(&mut self, latest_skip_start_slot: Slot) {
-        self.latest_skip_start_slot = PodSlot::from(latest_skip_start_slot)
-    }
-
-    /// Set the latest skip end slot
-    pub fn set_latest_skip_end_slot(&mut self, latest_skip_end_slot: Slot) {
-        self.latest_skip_end_slot = PodSlot::from(latest_skip_end_slot)
     }
 }

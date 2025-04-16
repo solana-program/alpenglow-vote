@@ -11,7 +11,7 @@ use {
     solana_program::pubkey::Pubkey,
     solana_sdk::{
         account::Account,
-        clock::{Epoch, Slot, UnixTimestamp},
+        clock::{Epoch, Slot},
         instruction::Instruction,
         signature::{Keypair, Signer},
     },
@@ -122,11 +122,6 @@ fn test_initialize_vote_account_basic() {
     assert_eq!(EPOCH, vote_state.authorized_voter().epoch());
     assert_eq!(None, vote_state.next_authorized_voter());
     assert_eq!(EpochCredit::default(), *vote_state.epoch_credits());
-    assert_eq!(Slot::from(0u64), vote_state.latest_timestamp().slot());
-    assert_eq!(
-        UnixTimestamp::from(0),
-        vote_state.latest_timestamp().timestamp()
-    );
 }
 
 #[test]
@@ -832,7 +827,7 @@ fn test_withdraw_basic() {
 
     let account = result.get_account(&vote_account.pubkey()).unwrap();
 
-    let rent_exempt_amount = 3_584_400;
+    let rent_exempt_amount = 2_359_440;
     assert_eq!(rent_exempt_amount + 1_234_567, account.lamports);
 
     // Issue a Withdraw transaction

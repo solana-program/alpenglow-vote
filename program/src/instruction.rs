@@ -4,12 +4,14 @@ use {
     crate::{
         error::VoteError,
         id,
-        state::{PodSlot, PodUnixTimestamp, VoteState},
-        vote::{FinalizationVote, NotarizationVote, SkipVote},
+        state::{PodSlot, VoteState},
+        vote::{
+            FinalizationVote, NotarizationFallbackVote, NotarizationVote, SkipFallbackVote,
+            SkipVote,
+        },
         vote_processor::{
             FinalizationVoteInstructionData, NotarizationVoteInstructionData,
-            SkipVoteInstructionData, CURRENT_FINALIZE_VOTE_VERSION, CURRENT_NOTARIZE_VOTE_VERSION,
-            CURRENT_SKIP_VOTE_VERSION,
+            CURRENT_FINALIZE_VOTE_VERSION, CURRENT_NOTARIZE_VOTE_VERSION,
         },
     },
     bytemuck::{Pod, Zeroable},
@@ -150,8 +152,28 @@ pub enum VoteInstruction {
     ///   1. `[SIGNER]` Vote authority
     ///
     ///   Data expected by this instruction:
-    ///     `SkipVoteInstructionData`
+    ///     `slot` : `u64`
     Skip,
+
+    /// A notarization fallback vote
+    ///
+    /// # Account references
+    ///   0. `[WRITE]` Vote account to be updated
+    ///   1. `[SIGNER]` Vote authority
+    ///
+    ///   Data expected by this instruction:
+    ///     `NotarizationVoteInstructionData`
+    NotarizeFallback,
+
+    /// A skip fallback vote
+    ///
+    /// # Account references
+    ///   0. `[WRITE]` Vote account to be updated
+    ///   1. `[SIGNER]` Vote authority
+    ///
+    ///   Data expected by this instruction:
+    ///     `slot` : `u64`
+    SkipFallback,
 }
 
 /// Instruction builder to create a notarization vote
@@ -174,7 +196,6 @@ pub fn notarize(
             block_id: *vote.block_id(),
             _replayed_slot: PodSlot::from(0),
             replayed_bank_hash: *vote.replayed_bank_hash(),
-            timestamp: vote.timestamp().map(PodUnixTimestamp::from),
         },
     )
 }
@@ -209,16 +230,49 @@ pub fn skip(vote_pubkey: Pubkey, vote_authority: Pubkey, vote: &SkipVote) -> Ins
         AccountMeta::new(vote_pubkey, false),
         AccountMeta::new_readonly(vote_authority, true),
     ];
-    let (start_slot, end_slot) = (vote.start_slot, vote.end_slot);
+
+    encode_instruction(accounts, VoteInstruction::Skip, &PodSlot::from(vote.slot()))
+}
+
+/// Instruction builder to create a notarization fallback vote
+pub fn notarize_fallback(
+    vote_pubkey: Pubkey,
+    vote_authority: Pubkey,
+    vote: &NotarizationFallbackVote,
+) -> Instruction {
+    let accounts = vec![
+        AccountMeta::new(vote_pubkey, false),
+        AccountMeta::new_readonly(vote_authority, true),
+    ];
 
     encode_instruction(
         accounts,
-        VoteInstruction::Skip,
-        &SkipVoteInstructionData {
-            version: CURRENT_SKIP_VOTE_VERSION,
-            start_slot: PodSlot::from(start_slot),
-            end_slot: PodSlot::from(end_slot),
+        VoteInstruction::NotarizeFallback,
+        &NotarizationVoteInstructionData {
+            version: CURRENT_NOTARIZE_VOTE_VERSION,
+            slot: PodSlot::from(vote.slot()),
+            block_id: *vote.block_id(),
+            _replayed_slot: PodSlot::from(0),
+            replayed_bank_hash: *vote.replayed_bank_hash(),
         },
+    )
+}
+
+/// Instruction builder to create a skip fallback vote
+pub fn skip_fallback(
+    vote_pubkey: Pubkey,
+    vote_authority: Pubkey,
+    vote: &SkipFallbackVote,
+) -> Instruction {
+    let accounts = vec![
+        AccountMeta::new(vote_pubkey, false),
+        AccountMeta::new_readonly(vote_authority, true),
+    ];
+
+    encode_instruction(
+        accounts,
+        VoteInstruction::SkipFallback,
+        &PodSlot::from(vote.slot()),
     )
 }
 
