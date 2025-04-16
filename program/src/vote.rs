@@ -1,20 +1,16 @@
 //! Vote data types for use by clients
 
-use std::ops::RangeInclusive;
-
-use either::Either;
 #[cfg(feature = "serde")]
 use serde::{Deserialize, Serialize};
 use solana_hash::Hash;
-use solana_program::clock::{Slot, UnixTimestamp};
+use solana_program::clock::Slot;
 use solana_program::instruction::Instruction;
 use solana_program::program_error::ProgramError;
 use solana_program::pubkey::Pubkey;
 
 use crate::instruction::{self, decode_instruction_data, decode_instruction_type, VoteInstruction};
-use crate::vote_processor::{
-    FinalizationVoteInstructionData, NotarizationVoteInstructionData, SkipVoteInstructionData,
-};
+use crate::state::PodSlot;
+use crate::vote_processor::{FinalizationVoteInstructionData, NotarizationVoteInstructionData};
 
 /// Enum that clients can use to parse and create the vote
 /// structures expected by the program
@@ -32,19 +28,18 @@ pub enum Vote {
     Finalize(FinalizationVote),
     /// A skip vote
     Skip(SkipVote),
+    /// A notarization fallback vote
+    NotarizeFallback(NotarizationFallbackVote),
+    /// A skip fallback vote
+    SkipFallback(SkipFallbackVote),
 }
 
 impl Vote {
     /// Create a new notarization vote
-    pub fn new_notarization_vote(
-        slot: Slot,
-        block_id: Hash,
-        bank_hash: Hash,
-        timestamp: Option<UnixTimestamp>,
-    ) -> Self {
+    pub fn new_notarization_vote(slot: Slot, block_id: Hash, bank_hash: Hash) -> Self {
         Self::from(NotarizationVote::new(
             slot, block_id, 0, /*_replayed_slot not used */
-            bank_hash, timestamp,
+            bank_hash,
         ))
     }
 
@@ -57,8 +52,21 @@ impl Vote {
     }
 
     /// Create a new skip vote
-    pub fn new_skip_vote(start: Slot, end: Slot) -> Self {
-        Self::from(SkipVote::new(start, end))
+    pub fn new_skip_vote(slot: Slot) -> Self {
+        Self::from(SkipVote::new(slot))
+    }
+
+    /// Create a new notarization fallback vote
+    pub fn new_notarization_fallback_vote(slot: Slot, block_id: Hash, bank_hash: Hash) -> Self {
+        Self::from(NotarizationFallbackVote::new(
+            slot, block_id, 0, /*_replayed_slot not used */
+            bank_hash,
+        ))
+    }
+
+    /// Create a new skip fallback vote
+    pub fn new_skip_fallback_vote(slot: Slot) -> Self {
+        Self::from(SkipFallbackVote::new(slot))
     }
 
     /// If this instruction represented by `instruction_data` is a vote
@@ -66,7 +74,11 @@ impl Vote {
         let instruction_type = decode_instruction_type(instruction_data)?;
         Ok(matches!(
             instruction_type,
-            VoteInstruction::Notarize | VoteInstruction::Finalize | VoteInstruction::Skip
+            VoteInstruction::Notarize
+                | VoteInstruction::Finalize
+                | VoteInstruction::Skip
+                | VoteInstruction::NotarizeFallback
+                | VoteInstruction::SkipFallback
         ))
     }
 
@@ -91,9 +103,21 @@ impl Vote {
                 )))
             }
             VoteInstruction::Skip => {
-                let skip_vote =
-                    decode_instruction_data::<SkipVoteInstructionData>(instruction_data)?;
-                Ok(Vote::from(SkipVote::new_internal(skip_vote)))
+                let skip_slot = decode_instruction_data::<PodSlot>(instruction_data)?;
+                Ok(Vote::from(SkipVote::new_internal(skip_slot)))
+            }
+            VoteInstruction::NotarizeFallback => {
+                let notarization_fallback_vote =
+                    decode_instruction_data::<NotarizationVoteInstructionData>(instruction_data)?;
+                Ok(Vote::from(NotarizationFallbackVote::new_internal(
+                    notarization_fallback_vote,
+                )))
+            }
+            VoteInstruction::SkipFallback => {
+                let skip_fallback_slot = decode_instruction_data::<PodSlot>(instruction_data)?;
+                Ok(Vote::from(SkipFallbackVote::new_internal(
+                    skip_fallback_slot,
+                )))
             }
             _ => panic!("Programmer error"),
         }
@@ -105,23 +129,23 @@ impl Vote {
             Self::Notarize(vote) => instruction::notarize(vote_pubkey, vote_authority, vote),
             Self::Finalize(vote) => instruction::finalize(vote_pubkey, vote_authority, vote),
             Self::Skip(vote) => instruction::skip(vote_pubkey, vote_authority, vote),
+            Self::NotarizeFallback(vote) => {
+                instruction::notarize_fallback(vote_pubkey, vote_authority, vote)
+            }
+            Self::SkipFallback(vote) => {
+                instruction::skip_fallback(vote_pubkey, vote_authority, vote)
+            }
         }
     }
 
-    /// The slot which was voted for. For skip votes, this is the end of the range
+    /// The slot which was voted for
     pub fn slot(&self) -> Slot {
         match self {
             Self::Notarize(vote) => vote.slot(),
             Self::Finalize(vote) => vote.slot(),
-            Self::Skip(vote) => vote.end_slot,
-        }
-    }
-
-    /// The skip range for skip votes
-    pub fn skip_range(&self) -> Option<RangeInclusive<Slot>> {
-        match self {
-            Self::Notarize(_) | Self::Finalize(_) => None,
-            Self::Skip(vote) => Some(vote.skip_range()),
+            Self::Skip(vote) => vote.slot(),
+            Self::NotarizeFallback(vote) => vote.slot(),
+            Self::SkipFallback(vote) => vote.slot(),
         }
     }
 
@@ -144,15 +168,6 @@ impl Vote {
     pub fn is_notarization_or_finalization(&self) -> bool {
         matches!(self, Self::Notarize(_) | Self::Finalize(_))
     }
-
-    /// The voted slots, `Left` for a notarize/finalize vote on a single slot, `Right` for a skip range
-    pub fn voted_slots(&self) -> Either<Slot, RangeInclusive<Slot>> {
-        match self {
-            Self::Notarize(vote) => Either::Left(vote.slot()),
-            Self::Finalize(vote) => Either::Left(vote.slot()),
-            Self::Skip(vote) => Either::Right(vote.skip_range()),
-        }
-    }
 }
 
 impl From<NotarizationVote> for Vote {
@@ -173,6 +188,18 @@ impl From<SkipVote> for Vote {
     }
 }
 
+impl From<NotarizationFallbackVote> for Vote {
+    fn from(vote: NotarizationFallbackVote) -> Self {
+        Self::NotarizeFallback(vote)
+    }
+}
+
+impl From<SkipFallbackVote> for Vote {
+    fn from(vote: SkipFallbackVote) -> Self {
+        Self::SkipFallback(vote)
+    }
+}
+
 /// A notarization vote
 #[cfg_attr(
     feature = "frozen-abi",
@@ -186,7 +213,6 @@ pub struct NotarizationVote {
     block_id: Hash,
     _replayed_slot: Slot,
     replayed_bank_hash: Hash,
-    timestamp: Option<UnixTimestamp>,
 }
 
 impl NotarizationVote {
@@ -196,24 +222,16 @@ impl NotarizationVote {
             block_id: notarization_vote.block_id,
             _replayed_slot: 0,
             replayed_bank_hash: notarization_vote.replayed_bank_hash,
-            timestamp: notarization_vote.timestamp.map(UnixTimestamp::from),
         }
     }
 
     /// Construct a notarization vote for `slot`
-    pub fn new(
-        slot: Slot,
-        block_id: Hash,
-        _replayed_slot: Slot,
-        replayed_bank_hash: Hash,
-        timestamp: Option<UnixTimestamp>,
-    ) -> Self {
+    pub fn new(slot: Slot, block_id: Hash, _replayed_slot: Slot, replayed_bank_hash: Hash) -> Self {
         Self {
             slot,
             block_id,
             _replayed_slot,
             replayed_bank_hash,
-            timestamp,
         }
     }
 
@@ -230,11 +248,6 @@ impl NotarizationVote {
     /// The bank hash of the latest replayed slot
     pub fn replayed_bank_hash(&self) -> &Hash {
         &self.replayed_bank_hash
-    }
-
-    /// The time at which this vote was created
-    pub fn timestamp(&self) -> Option<UnixTimestamp> {
-        self.timestamp
     }
 }
 
@@ -273,12 +286,12 @@ impl FinalizationVote {
         }
     }
 
-    /// The slot to notarize
+    /// The slot to finalize
     pub fn slot(&self) -> Slot {
         self.slot
     }
 
-    /// The block_id of the notarization slot
+    /// The block_id of the finalization slot
     pub fn block_id(&self) -> &Hash {
         &self.block_id
     }
@@ -300,28 +313,104 @@ impl FinalizationVote {
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize,))]
 #[derive(Clone, Copy, Debug, PartialEq, Default)]
 pub struct SkipVote {
-    pub(crate) start_slot: Slot,
-    pub(crate) end_slot: Slot,
+    pub(crate) slot: Slot,
 }
 
 impl SkipVote {
-    fn new_internal(skip_vote: &SkipVoteInstructionData) -> Self {
+    fn new_internal(slot: &PodSlot) -> Self {
         Self {
-            start_slot: Slot::from(skip_vote.start_slot),
-            end_slot: Slot::from(skip_vote.end_slot),
+            slot: Slot::from(*slot),
         }
     }
 
-    /// Construct a skip vote for `[start_slot, end_slot]`
-    pub fn new(start_slot: Slot, end_slot: Slot) -> Self {
+    /// Construct a skip vote for `slot`
+    pub fn new(slot: Slot) -> Self {
+        Self { slot }
+    }
+
+    /// The slot to skip
+    pub fn slot(&self) -> Slot {
+        self.slot
+    }
+}
+
+/// A notarization fallback vote
+#[cfg_attr(
+    feature = "frozen-abi",
+    derive(AbiExample),
+    frozen_abi(digest = "FjK47hyf3RFm2bVX6My8barMStC2P6cAg3S9ALpvGpwd")
+)]
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize,))]
+#[derive(Clone, Copy, Debug, PartialEq, Default)]
+pub struct NotarizationFallbackVote {
+    slot: Slot,
+    block_id: Hash,
+    _replayed_slot: Slot,
+    replayed_bank_hash: Hash,
+}
+
+impl NotarizationFallbackVote {
+    fn new_internal(notarization_vote: &NotarizationVoteInstructionData) -> Self {
         Self {
-            start_slot,
-            end_slot,
+            slot: Slot::from(notarization_vote.slot),
+            block_id: notarization_vote.block_id,
+            _replayed_slot: 0,
+            replayed_bank_hash: notarization_vote.replayed_bank_hash,
         }
     }
 
-    /// The inclusive on both ends range of slots to skip
-    pub fn skip_range(&self) -> RangeInclusive<Slot> {
-        self.start_slot..=self.end_slot
+    /// Construct a notarization vote for `slot`
+    pub fn new(slot: Slot, block_id: Hash, _replayed_slot: Slot, replayed_bank_hash: Hash) -> Self {
+        Self {
+            slot,
+            block_id,
+            _replayed_slot,
+            replayed_bank_hash,
+        }
+    }
+
+    /// The slot to notarize
+    pub fn slot(&self) -> Slot {
+        self.slot
+    }
+
+    /// The block_id of the notarization slot
+    pub fn block_id(&self) -> &Hash {
+        &self.block_id
+    }
+
+    /// The bank hash of the latest replayed slot
+    pub fn replayed_bank_hash(&self) -> &Hash {
+        &self.replayed_bank_hash
+    }
+}
+
+/// A skip fallback vote
+#[cfg_attr(
+    feature = "frozen-abi",
+    derive(AbiExample),
+    frozen_abi(digest = "56VUHMkVzrPasPzs1C6Wn4MXUeBqKmApMKiF5Mqyk5xr")
+)]
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize,))]
+#[derive(Clone, Copy, Debug, PartialEq, Default)]
+pub struct SkipFallbackVote {
+    pub(crate) slot: Slot,
+}
+
+impl SkipFallbackVote {
+    fn new_internal(slot: &PodSlot) -> Self {
+        Self {
+            slot: Slot::from(*slot),
+        }
+    }
+
+    /// Construct a skip fallback vote for `slot`
+    pub fn new(slot: Slot) -> Self {
+        Self { slot }
+    }
+
+    /// The slot to skip
+    pub fn slot(&self) -> Slot {
+        self.slot
     }
 }

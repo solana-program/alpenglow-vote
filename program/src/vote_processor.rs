@@ -2,19 +2,16 @@ use bytemuck::{Pod, Zeroable};
 use solana_program::account_info::AccountInfo;
 use solana_program::clock::Clock;
 use solana_program::clock::Slot;
-use solana_program::clock::UnixTimestamp;
 use solana_program::hash::Hash;
 use solana_program::program_error::ProgramError;
 use solana_program::pubkey::Pubkey;
 use solana_program::sysvar::slot_hashes::PodSlotHashes;
 
 use crate::error::VoteError;
-use crate::state::BlockTimestamp;
-use crate::state::{PodSlot, PodUnixTimestamp, VoteState};
+use crate::state::{PodSlot, VoteState};
 
 pub(crate) const CURRENT_NOTARIZE_VOTE_VERSION: u8 = 1;
 pub(crate) const CURRENT_FINALIZE_VOTE_VERSION: u8 = 1;
-pub(crate) const CURRENT_SKIP_VOTE_VERSION: u8 = 1;
 
 /// Number of slots of grace period for which maximum vote credits are awarded - votes landing
 /// within this number of slots of the slot that is being voted on are awarded full credits.
@@ -25,7 +22,7 @@ pub const VOTE_CREDITS_GRACE_SLOTS: u64 = 2;
 pub const VOTE_CREDITS_MAXIMUM_PER_SLOT: u64 = 16;
 
 /// A notarization vote, the data expected by
-/// `VoteInstruction::Notarize`
+/// `VoteInstruction::Notarize` and `VoteInstruction::NotarizeFallback`
 #[repr(C, packed)]
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub(crate) struct NotarizationVoteInstructionData {
@@ -45,9 +42,6 @@ pub(crate) struct NotarizationVoteInstructionData {
     /// The bank_hash of the last replayed block
     /// Prior to APE this is the bank hash of `slot`
     pub replayed_bank_hash: Hash,
-
-    /// The timestamp when this vote was created
-    pub timestamp: Option<PodUnixTimestamp>,
 }
 
 // SAFETY: for our purposes we treat a zero timestamp as the validator not
@@ -76,21 +70,6 @@ pub(crate) struct FinalizationVoteInstructionData {
     /// The bank_hash of the last replayed block
     /// Prior to APE this is the bank hash of `slot`
     pub replayed_bank_hash: Hash,
-}
-
-/// A skip vote, the data expected by
-/// `VoteInstruction::Skip`
-#[repr(C, packed)]
-#[derive(Clone, Copy, Debug, PartialEq, Pod, Zeroable)]
-pub(crate) struct SkipVoteInstructionData {
-    /// The version of this vote message
-    pub version: u8,
-
-    /// The start of the slot range being skipped
-    pub start_slot: PodSlot,
-
-    /// The end (inclusive) of the slot range being skipped
-    pub end_slot: PodSlot,
 }
 
 fn replay_bank_hash_checks(
@@ -157,41 +136,27 @@ fn award_credits(
 /// Processing skip credits
 fn process_skip_credits(
     vote_state: &mut VoteState,
-    vote_start_slot: u64,
-    vote_end_slot: u64,
+    skip_slot: Slot,
     clock: &Clock,
     slot_hashes: &PodSlotHashes,
 ) -> Result<(), ProgramError> {
-    if vote_end_slot > clock.slot {
-        return Err(VoteError::SkipEndSlotExceedsCurrentSlot.into());
+    if skip_slot >= clock.slot {
+        return Err(VoteError::SkipSlotExceedsCurrentSlot.into());
     }
 
-    let eligible_skip_start = vote_state
-        .latest_skip_end_slot()
-        .saturating_add(1)
-        .max(vote_start_slot);
+    let hash = slot_hashes
+        .get(&skip_slot)
+        .map_err(|_| VoteError::MissingSlotHashesSysvar)?;
 
-    let mut earned_credits = 0_u64;
+    // Observing a valid slot hash for the slot `skip_slot` indicates that `skip_slot` was
+    // not skipped on this fork. Only award credits to skip votes associated with slots that
+    // were skipped.
+    if hash.is_none() {
+        // NOTE: clock.slot >= vote_end_slot >= skip_slot. Eventually, just use unchecked_sub.
+        let credits_to_award = latency_to_credits(clock.slot.saturating_sub(skip_slot));
 
-    for skip_slot in eligible_skip_start..=vote_end_slot {
-        let hash = slot_hashes
-            .get(&skip_slot)
-            .map_err(|_| VoteError::MissingSlotHashesSysvar)?;
-
-        // Observing a valid slot hash for the slot `skip_slot` indicates that `skip_slot` was
-        // not skipped on this fork. Only award credits to skip votes associated with slots that
-        // were skipped.
-        if hash.is_none() && skip_slot != clock.slot {
-            // NOTE: clock.slot >= vote_end_slot >= skip_slot. Eventually, just use unchecked_sub.
-            let cur_credits_to_award = latency_to_credits(clock.slot.saturating_sub(skip_slot));
-
-            // NOTE: earned_credits per slot << u64::MAX, so we're fine here. Eventually, just use
-            // unchecked_add.
-            earned_credits = earned_credits.saturating_add(cur_credits_to_award);
-        }
+        award_credits(vote_state, clock.epoch, credits_to_award)?;
     }
-
-    award_credits(vote_state, clock.epoch, earned_credits)?;
 
     Ok(())
 }
@@ -230,30 +195,7 @@ pub(crate) fn process_notarization_vote(
         return Err(ProgramError::MissingRequiredSignature);
     }
 
-    // Notarization votes must be strictly increasing
-    if vote_slot <= Slot::from(vote_state.latest_notarized_slot) {
-        return Err(VoteError::VoteTooOld.into());
-    }
-
     replay_bank_hash_checks(vote_slot, vote.replayed_bank_hash, slot_hashes)?;
-
-    vote_state.latest_notarized_slot = vote.slot;
-    vote_state.latest_notarized_block_id = vote.block_id;
-    vote_state.latest_notarized_bank_hash = vote.replayed_bank_hash;
-
-    if let Some(timestamp) = vote.timestamp.map(UnixTimestamp::from) {
-        if timestamp != 0 && timestamp > vote_state.latest_timestamp().timestamp() {
-            vote_state.latest_timestamp = BlockTimestamp {
-                slot: vote.slot,
-                timestamp: vote
-                    .timestamp
-                    .expect("timestamp is verified to be not None above"),
-            };
-        } else {
-            return Err(VoteError::TimestampTooOld.into());
-        }
-    }
-
     process_notarization_finalization_credits(vote_state, clock, vote_slot)
 }
 
@@ -277,22 +219,7 @@ pub(crate) fn process_finalization_vote(
         return Err(ProgramError::MissingRequiredSignature);
     }
 
-    if vote_slot <= Slot::from(vote_state.latest_finalized_slot) {
-        return Err(VoteError::VoteTooOld.into());
-    }
-
-    if vote_state.latest_skip_start_slot() <= vote_slot
-        && vote_slot <= vote_state.latest_skip_end_slot()
-    {
-        return Err(VoteError::SkipSlotRangeContainsFinalizationVote.into());
-    }
-
     replay_bank_hash_checks(vote_slot, vote.replayed_bank_hash, slot_hashes)?;
-
-    vote_state.latest_finalized_slot = vote.slot;
-    vote_state.latest_finalized_block_id = vote.block_id;
-    vote_state.latest_finalized_bank_hash = vote.replayed_bank_hash;
-
     process_notarization_finalization_credits(vote_state, clock, vote_slot)
 }
 
@@ -301,50 +228,18 @@ pub(crate) fn process_skip_vote(
     vote_authority: &Pubkey,
     clock: &Clock,
     slot_hashes: &PodSlotHashes,
-    vote: &SkipVoteInstructionData,
+    slot: &PodSlot,
 ) -> Result<(), ProgramError> {
     let mut vote_state = vote_account.data.borrow_mut();
     let vote_state = bytemuck::from_bytes_mut::<VoteState>(&mut vote_state);
-
-    if vote.version != CURRENT_SKIP_VOTE_VERSION {
-        return Err(VoteError::VersionMismatch.into());
-    }
 
     if vote_state.authorized_voter.voter != *vote_authority {
         return Err(ProgramError::MissingRequiredSignature);
     }
 
-    let (vote_start_slot, vote_end_slot) = (Slot::from(vote.start_slot), Slot::from(vote.end_slot));
-    let (prev_start_slot, prev_end_slot) = vote_state.latest_skip_range();
+    let slot = Slot::from(*slot);
 
-    if vote_end_slot < vote_start_slot {
-        return Err(VoteError::SkipEndSlotLowerThanSkipStartSlot.into());
-    }
-
-    // TODO(ashwin): remove when optimizing (slashing can handle this)
-    let latest_finalized_slot = Slot::from(vote_state.latest_finalized_slot);
-    if vote_start_slot <= latest_finalized_slot && latest_finalized_slot <= vote_end_slot {
-        return Err(VoteError::SkipSlotRangeContainsFinalizationVote.into());
-    }
-
-    if prev_end_slot >= vote_end_slot {
-        return Err(VoteError::VoteTooOld.into());
-    }
-
-    if vote_start_slot != prev_start_slot && vote_start_slot <= prev_end_slot {
-        return Err(VoteError::SkipRangeOverlaps.into());
-    }
-
-    process_skip_credits(
-        vote_state,
-        vote.start_slot.into(),
-        vote.end_slot.into(),
-        clock,
-        slot_hashes,
-    )?;
-
-    vote_state.latest_skip_start_slot = vote.start_slot;
-    vote_state.latest_skip_end_slot = vote.end_slot;
+    process_skip_credits(vote_state, slot, clock, slot_hashes)?;
 
     Ok(())
 }
@@ -577,106 +472,19 @@ mod tests {
         };
 
         let mut vote_state = setup_vote_state(&clock);
-        vote_state.set_latest_skip_start_slot(clock.slot - 20);
-        vote_state.set_latest_skip_end_slot(clock.slot - 10);
-
-        let vote_start_slot = clock.slot - 5;
-        let vote_end_slot = clock.slot;
 
         assert_eq!(0, vote_state.epoch_credits().credits());
         assert_eq!(0, vote_state.epoch_credits().prev_credits());
 
         assert!(process_skip_credits(
             &mut vote_state,
-            vote_start_slot,
-            vote_end_slot,
+            clock.slot - 5,
             &clock,
             &mock_slot_hash_entries(vec![]),
         )
         .is_ok());
 
-        // (vote_start_slot, vote_end_slot) implies six skip votes. We expect 74 total credits to be
-        // awarded, due to the logic below.
-        //
-        // vote_slot = clock.slot => 0 credits
-        // (since votes on a slot equal to the current clock slot get zero credits)
-        //
-        // vote_slot = clock.slot - 1 => 16 credits (full marks)
-        // vote_slot = clock.slot - 2 => 16 credits (full marks)
-        // vote_slot = clock.slot - 3 => 15 credits (full marks)
-        // vote_slot = clock.slot - 4 => 14 credits (full marks)
-        // vote_slot = clock.slot - 5 => 13 credits (full marks)
-        assert_eq!(74, vote_state.epoch_credits().credits());
-        assert_eq!(0, vote_state.epoch_credits().prev_credits());
-    }
-
-    // TODO: test process_skip_credits in more detail.
-    //
-    // We should test the following cases. Notation:
-    //
-    // (s_cur, e_cur) denotes (vote_state.latest_skip_start_slot, vote_state.latest_skip_end_slot)
-    // (s_new, e_new) denotes (vote_start_slot, vote_end_slot)
-    //
-    // In each of these cases, we should set clock.slot to k + max(s_cur, e_cur, s_new, e_new) where
-    // k = 0 and 1.
-    //
-    // (s_new, e_new) is before (s_cur, e_cur)
-    // same, but e_new = s_cur
-    //
-    // (s_new, e_new) straddle s_cur
-    // same, but s_new = s_cur
-    //
-    // (s_new, e_new) straddle e_cur
-    // same, but e_new = e_cur
-    // same, but s_new = e_cur
-    //
-    // (s_new, e_new) is after (s_cur, e_cur)
-    //
-    // (s_new, e_new) inside (s_cur, e_cur)
-    //
-    // (s_new, e_new) outside (s_cur, e_cur)
-    //
-    // (s_new, e_new) = (s_cur, e_cur)
-    #[test]
-    #[serial]
-    fn test_process_skip_credits_simple() {
-        let clock = Clock {
-            slot: epoch_to_starting_slot(256),
-            epoch: 256,
-            ..Clock::default()
-        };
-
-        let mut vote_state = setup_vote_state(&clock);
-        vote_state.set_latest_skip_start_slot(clock.slot - 20);
-        vote_state.set_latest_skip_end_slot(clock.slot - 10);
-
-        let vote_start_slot = clock.slot - 5;
-        let vote_end_slot = clock.slot;
-
-        assert_eq!(0, vote_state.epoch_credits().credits());
-        assert_eq!(0, vote_state.epoch_credits().prev_credits());
-
-        assert!(process_skip_credits(
-            &mut vote_state,
-            vote_start_slot,
-            vote_end_slot,
-            &clock,
-            &mock_slot_hash_entries(vec![]),
-        )
-        .is_ok());
-
-        // (vote_start_slot, vote_end_slot) implies six skip votes. We expect 74 total credits to be
-        // awarded, due to the logic below.
-        //
-        // vote_slot = clock.slot => 0 credits
-        // (since votes on a slot equal to the current clock slot get zero credits)
-        //
-        // vote_slot = clock.slot - 1 => 16 credits (full marks)
-        // vote_slot = clock.slot - 2 => 16 credits (full marks)
-        // vote_slot = clock.slot - 3 => 15 credits
-        // vote_slot = clock.slot - 4 => 14 credits
-        // vote_slot = clock.slot - 5 => 13 credits
-        assert_eq!(74, vote_state.epoch_credits().credits());
+        assert_eq!(13, vote_state.epoch_credits().credits());
         assert_eq!(0, vote_state.epoch_credits().prev_credits());
     }
 

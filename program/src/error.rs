@@ -37,37 +37,17 @@ pub enum VoteError {
     #[error("Replay bank hash mismatch")]
     ReplayBankHashMismatch,
 
-    /// Skip end slot exceeds clock slot
-    #[error("Skip end slot exceeds clock slot")]
-    SkipEndSlotExceedsCurrentSlot,
-
-    /// Skip end slot is lower than the skip start slot
-    #[error("Skip end slot is lower than the skip start slot")]
-    SkipEndSlotLowerThanSkipStartSlot,
-
-    /// New skip range overlaps with previous
-    #[error("Skip range overlaps")]
-    SkipRangeOverlaps,
-
-    /// Skip slot range contains finalization vote
-    #[error("Skip slot range contains finalization vote")]
-    SkipSlotRangeContainsFinalizationVote,
+    /// Skip slot exceeds clock slot
+    #[error("Skip slot exceeds clock slot")]
+    SkipSlotExceedsCurrentSlot,
 
     /// Slot hashes is missing the replayed slot key
     #[error("Slot hashes is missing the replayed slot key")]
     SlotHashesMissingKey,
 
-    /// Timestamp is too old
-    #[error("Timestamp is too old")]
-    TimestampTooOld,
-
     /// Version mismatch
     #[error("Version mismatch")]
     VersionMismatch,
-
-    /// Vote too old (notarization / finalization votes aren't monotonic)
-    #[error("Notarization / finalization vote isn't monotonic")]
-    VoteTooOld,
 }
 
 impl From<VoteError> for ProgramError {
