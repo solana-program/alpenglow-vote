@@ -10,14 +10,14 @@ use solana_program::pubkey::Pubkey;
 
 use crate::instruction::{self, decode_instruction_data, decode_instruction_type, VoteInstruction};
 use crate::state::PodSlot;
-use crate::vote_processor::{FinalizationVoteInstructionData, NotarizationVoteInstructionData};
+use crate::vote_processor::NotarizationVoteInstructionData;
 
 /// Enum that clients can use to parse and create the vote
 /// structures expected by the program
 #[cfg_attr(
     feature = "frozen-abi",
     derive(AbiExample, AbiEnumVisitor),
-    frozen_abi(digest = "3FyBmZL8rsCkrz6AnqjfgjskNF3HyWMVGejteSP6wC6h")
+    frozen_abi(digest = "6iDQpLRkL8NzahPf124tqizctfL4EGGXa8LDTekXvFcR")
 )]
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize,))]
 #[derive(Clone, Copy, Debug, PartialEq)]
@@ -44,11 +44,8 @@ impl Vote {
     }
 
     /// Create a new finalization vote
-    pub fn new_finalization_vote(slot: Slot, block_id: Hash, bank_hash: Hash) -> Self {
-        Self::from(FinalizationVote::new(
-            slot, block_id, 0, /*_replayed_slot not used */
-            bank_hash,
-        ))
+    pub fn new_finalization_vote(slot: Slot) -> Self {
+        Self::from(FinalizationVote::new(slot))
     }
 
     /// Create a new skip vote
@@ -96,10 +93,9 @@ impl Vote {
                 )))
             }
             VoteInstruction::Finalize => {
-                let finalization_vote =
-                    decode_instruction_data::<FinalizationVoteInstructionData>(instruction_data)?;
+                let finalization_slot = decode_instruction_data::<PodSlot>(instruction_data)?;
                 Ok(Vote::from(FinalizationVote::new_internal(
-                    finalization_vote,
+                    finalization_slot,
                 )))
             }
             VoteInstruction::Skip => {
@@ -204,7 +200,7 @@ impl From<SkipFallbackVote> for Vote {
 #[cfg_attr(
     feature = "frozen-abi",
     derive(AbiExample),
-    frozen_abi(digest = "FjK47hyf3RFm2bVX6My8barMStC2P6cAg3S9ALpvGpwd")
+    frozen_abi(digest = "AfTX2mg2e3L433SgswtskptGYXLpWGXYDcR4QcgSzRC5")
 )]
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize,))]
 #[derive(Clone, Copy, Debug, PartialEq, Default)]
@@ -255,50 +251,29 @@ impl NotarizationVote {
 #[cfg_attr(
     feature = "frozen-abi",
     derive(AbiExample),
-    frozen_abi(digest = "5vg9jirqMy6FbBRm3kZLENrYvaMMZE8brKY99zG2g7FA")
+    frozen_abi(digest = "2XQ5N6YLJjF28w7cMFFUQ9SDgKuf9JpJNtAiXSPA8vR2")
 )]
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize,))]
 #[derive(Clone, Copy, Debug, PartialEq, Default)]
 pub struct FinalizationVote {
     slot: Slot,
-    block_id: Hash,
-    _replayed_slot: Slot,
-    replayed_bank_hash: Hash,
 }
 
 impl FinalizationVote {
-    fn new_internal(finalization_vote: &FinalizationVoteInstructionData) -> Self {
+    fn new_internal(finalization_slot: &PodSlot) -> Self {
         Self {
-            slot: Slot::from(finalization_vote.slot),
-            block_id: finalization_vote.block_id,
-            _replayed_slot: 0,
-            replayed_bank_hash: finalization_vote.replayed_bank_hash,
+            slot: Slot::from(*finalization_slot),
         }
     }
 
     /// Construct a finalization vote for `slot`
-    pub fn new(slot: Slot, block_id: Hash, _replayed_slot: Slot, replayed_bank_hash: Hash) -> Self {
-        Self {
-            slot,
-            block_id,
-            _replayed_slot,
-            replayed_bank_hash,
-        }
+    pub fn new(slot: Slot) -> Self {
+        Self { slot }
     }
 
     /// The slot to finalize
     pub fn slot(&self) -> Slot {
         self.slot
-    }
-
-    /// The block_id of the finalization slot
-    pub fn block_id(&self) -> &Hash {
-        &self.block_id
-    }
-
-    /// The bank hash of the latest replayed slot
-    pub fn replayed_bank_hash(&self) -> &Hash {
-        &self.replayed_bank_hash
     }
 }
 
@@ -308,7 +283,7 @@ impl FinalizationVote {
 #[cfg_attr(
     feature = "frozen-abi",
     derive(AbiExample),
-    frozen_abi(digest = "56VUHMkVzrPasPzs1C6Wn4MXUeBqKmApMKiF5Mqyk5xr")
+    frozen_abi(digest = "G8Nrx3sMYdnLpHsCNark3BGA58BmW2sqNnqjkYhQHtN")
 )]
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize,))]
 #[derive(Clone, Copy, Debug, PartialEq, Default)]
@@ -338,7 +313,7 @@ impl SkipVote {
 #[cfg_attr(
     feature = "frozen-abi",
     derive(AbiExample),
-    frozen_abi(digest = "FjK47hyf3RFm2bVX6My8barMStC2P6cAg3S9ALpvGpwd")
+    frozen_abi(digest = "2eD1FTtZb6e86j3WEYCkzG9Yer36jA98B4RiuvFgwZ7d")
 )]
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize,))]
 #[derive(Clone, Copy, Debug, PartialEq, Default)]
@@ -389,7 +364,7 @@ impl NotarizationFallbackVote {
 #[cfg_attr(
     feature = "frozen-abi",
     derive(AbiExample),
-    frozen_abi(digest = "56VUHMkVzrPasPzs1C6Wn4MXUeBqKmApMKiF5Mqyk5xr")
+    frozen_abi(digest = "WsUNum8V62gjRU1yAnPuBMAQui4YvMwD1RwrzHeYkeF")
 )]
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize,))]
 #[derive(Clone, Copy, Debug, PartialEq, Default)]

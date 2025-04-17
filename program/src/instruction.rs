@@ -9,10 +9,7 @@ use {
             FinalizationVote, NotarizationFallbackVote, NotarizationVote, SkipFallbackVote,
             SkipVote,
         },
-        vote_processor::{
-            FinalizationVoteInstructionData, NotarizationVoteInstructionData,
-            CURRENT_FINALIZE_VOTE_VERSION, CURRENT_NOTARIZE_VOTE_VERSION,
-        },
+        vote_processor::{NotarizationVoteInstructionData, CURRENT_NOTARIZE_VOTE_VERSION},
     },
     bytemuck::{Pod, Zeroable},
     num_enum::{IntoPrimitive, TryFromPrimitive},
@@ -142,7 +139,7 @@ pub enum VoteInstruction {
     ///   1. `[SIGNER]` Vote authority
     ///
     ///   Data expected by this instruction:
-    ///     `FinalizationVoteInstructionData`
+    ///     `slot` : `u64`
     Finalize,
 
     /// A skip vote
@@ -214,13 +211,7 @@ pub fn finalize(
     encode_instruction(
         accounts,
         VoteInstruction::Finalize,
-        &FinalizationVoteInstructionData {
-            version: CURRENT_FINALIZE_VOTE_VERSION,
-            slot: PodSlot::from(vote.slot()),
-            block_id: *vote.block_id(),
-            _replayed_slot: PodSlot::from(0),
-            replayed_bank_hash: *vote.replayed_bank_hash(),
-        },
+        &PodSlot::from(vote.slot()),
     )
 }
 
