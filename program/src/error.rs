@@ -37,6 +37,10 @@ pub enum VoteError {
     #[error("Replay bank hash mismatch")]
     ReplayBankHashMismatch,
 
+    /// Skip slot is present on this fork
+    #[error("Skipped slot is present on this fork")]
+    SkipSlotPresent,
+
     /// Skip slot exceeds clock slot
     #[error("Skip slot exceeds clock slot")]
     SkipSlotExceedsCurrentSlot,

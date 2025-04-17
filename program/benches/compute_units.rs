@@ -8,7 +8,8 @@ use {
     },
     mollusk_svm::Mollusk,
     mollusk_svm_bencher::MolluskComputeUnitBencher,
-    solana_sdk::{account::Account, pubkey::Pubkey},
+    solana_hash::Hash,
+    solana_sdk::{account::Account, clock::Clock, pubkey::Pubkey},
 };
 
 const BENCHMARK_OUT_DIR: &str = "./benches";
@@ -24,16 +25,34 @@ fn main() {
 
     let mut mollusk = Mollusk::new(&alpenglow_vote::id(), "alpenglow_vote");
 
-    let slot = 5;
-    mollusk.warp_to_slot(slot + 1);
+    let clock_slot = 6;
+    let vote_slot = 5;
+    let skip_slot = 4;
+    // Setup fork not including 4
+    mollusk.warp_to_slot(skip_slot - 1);
+    let epoch = mollusk.sysvars.epoch_schedule.get_epoch(clock_slot);
+    let leader_schedule_epoch = mollusk
+        .sysvars
+        .epoch_schedule
+        .get_leader_schedule_epoch(clock_slot);
+    mollusk.sysvars.clock = Clock {
+        slot: clock_slot,
+        epoch,
+        leader_schedule_epoch,
+        ..Default::default()
+    };
+    mollusk
+        .sysvars
+        .slot_hashes
+        .add(vote_slot, Hash::new_unique());
 
-    let bank_hash = *mollusk.sysvars.slot_hashes.get(&slot).unwrap();
+    let bank_hash = *mollusk.sysvars.slot_hashes.get(&vote_slot).unwrap();
 
     MolluskComputeUnitBencher::new(mollusk)
         .bench({
             let vote_address = Pubkey::new_unique();
             let authority = Pubkey::new_unique();
-            let vote = FinalizationVote::new(slot, bank_hash, slot, bank_hash);
+            let vote = FinalizationVote::new(vote_slot);
             (
                 "finalize",
                 &finalize(vote_address, authority, &vote),
@@ -46,7 +65,7 @@ fn main() {
         .bench({
             let vote_address = Pubkey::new_unique();
             let authority = Pubkey::new_unique();
-            let vote = NotarizationVote::new(slot, bank_hash, slot, bank_hash);
+            let vote = NotarizationVote::new(vote_slot, bank_hash, vote_slot, bank_hash);
             (
                 "notarize",
                 &notarize(vote_address, authority, &vote),
@@ -59,7 +78,7 @@ fn main() {
         .bench({
             let vote_address = Pubkey::new_unique();
             let authority = Pubkey::new_unique();
-            let vote = SkipVote::new(slot);
+            let vote = SkipVote::new(skip_slot);
             (
                 "skip",
                 &skip(vote_address, authority, &vote),

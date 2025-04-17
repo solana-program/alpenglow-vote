@@ -20,9 +20,7 @@ use crate::instruction::{
     AuthorizeWithSeedInstructionData, InitializeAccountInstructionData, VoteInstruction,
 };
 use crate::state::{PodSlot, VoteState};
-use crate::vote_processor::{
-    self, FinalizationVoteInstructionData, NotarizationVoteInstructionData,
-};
+use crate::vote_processor::{self, NotarizationVoteInstructionData};
 
 fn pod_slot_hashes() -> Result<PodSlotHashes, VoteError> {
     PodSlotHashes::fetch().map_err(|_| VoteError::MissingSlotHashesSysvar)
@@ -258,21 +256,14 @@ pub fn process_instruction(
         }
         VoteInstruction::Finalize => {
             let clock = clock::Clock::get()?;
-            let slot_hashes = pod_slot_hashes()?;
 
             let Some(authority) = next_account_info(account_info_iter)?.signer_key() else {
                 return Err(ProgramError::MissingRequiredSignature);
             };
 
-            let vote = decode_instruction_data::<FinalizationVoteInstructionData>(input)?;
+            let vote = decode_instruction_data::<PodSlot>(input)?;
 
-            vote_processor::process_finalization_vote(
-                vote_account,
-                authority,
-                &clock,
-                &slot_hashes,
-                vote,
-            )
+            vote_processor::process_finalization_vote(vote_account, authority, &clock, vote)
         }
         VoteInstruction::Skip => {
             let clock = clock::Clock::get()?;
