@@ -46,7 +46,7 @@ fn main() {
         .bench({
             let vote_address = Pubkey::new_unique();
             let authority = Pubkey::new_unique();
-            let vote = NotarizationVote::new(slot, bank_hash, slot, bank_hash, None);
+            let vote = NotarizationVote::new(slot, bank_hash, slot, bank_hash);
             (
                 "notarize",
                 &notarize(vote_address, authority, &vote),
@@ -59,7 +59,7 @@ fn main() {
         .bench({
             let vote_address = Pubkey::new_unique();
             let authority = Pubkey::new_unique();
-            let vote = SkipVote::new(slot, slot);
+            let vote = SkipVote::new(slot);
             (
                 "skip",
                 &skip(vote_address, authority, &vote),
