@@ -62,3 +62,6 @@ node_pubkey
 withdrawer/W
 block_id
 bank_hash
+BLS
+Alpenglow
+affine
