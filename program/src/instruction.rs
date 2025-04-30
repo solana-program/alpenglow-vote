@@ -2,6 +2,7 @@
 
 use {
     crate::{
+        bls::{BLSCertificateInstructionData, BLSCertificateType},
         error::VoteError,
         id,
         state::{PodSlot, VoteState},
@@ -171,6 +172,16 @@ pub enum VoteInstruction {
     ///   Data expected by this instruction:
     ///     `slot` : `u64`
     SkipFallback,
+
+    /// A BLS certificate
+    ///
+    /// # Account references
+    ///  0. `[WRITE]` Vote account to be updated
+    ///  1. `[SIGNER]` Vote authority
+    ///
+    ///  Data expected by this instruction:
+    ///    `BlsVoteInstructionData`
+    BLSCertificate,
 }
 
 /// Instruction builder to create a notarization vote
@@ -570,6 +581,41 @@ pub fn update_commission(
     ];
 
     encode_instruction(accounts, VoteInstruction::UpdateCommission, &new_commission)
+}
+
+/// Instruction builder to create a BLS certificate
+/// - `vote_pubkey` the vote account
+/// - `vote_authority_pubkey` the vote authority of the vote account
+/// - `bls_certificate` the BLS certificate to write to the vote account
+/// - `bls_signature` the BLS signature to write to the vote account
+/// - `validator_bitmap` the validator bitmap to write to the vote account
+/// - `slot` the slot to write to the vote account
+/// - `certificate_type` the certificate type to write to the vote account
+pub fn bls_certificate(
+    vote_pubkey: Pubkey,
+    vote_authority_pubkey: Pubkey,
+    slot: u64,
+    certificate_type: BLSCertificateType,
+    bls_certificate: [u8; 96],
+    bls_signature: [u8; 192],
+    validator_bitmap: [u8; 512],
+) -> Instruction {
+    let accounts = vec![
+        AccountMeta::new(vote_pubkey, false),
+        AccountMeta::new_readonly(vote_authority_pubkey, true),
+    ];
+
+    encode_instruction(
+        accounts,
+        VoteInstruction::BLSCertificate,
+        &BLSCertificateInstructionData {
+            bls_certificate,
+            bls_signature,
+            validator_bitmap,
+            slot,
+            certificate_type,
+        },
+    )
 }
 
 /// Utility function for encoding instruction data

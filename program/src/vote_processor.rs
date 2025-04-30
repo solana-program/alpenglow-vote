@@ -7,6 +7,7 @@ use solana_program::program_error::ProgramError;
 use solana_program::pubkey::Pubkey;
 use solana_program::sysvar::slot_hashes::PodSlotHashes;
 
+use crate::bls::BLSCertificateInstructionData;
 use crate::error::VoteError;
 use crate::state::{PodSlot, VoteState};
 
@@ -225,6 +226,21 @@ pub(crate) fn process_skip_vote(
     let slot = Slot::from(*slot);
 
     award_skip_credits(vote_state, slot, clock, slot_hashes)
+}
+
+pub(crate) fn process_bls_certificate(
+    vote_account: &AccountInfo,
+    vote_authority: &Pubkey,
+    _data: &BLSCertificateInstructionData,
+) -> Result<(), ProgramError> {
+    let mut vote_state = vote_account.data.borrow_mut();
+    let vote_state = bytemuck::from_bytes_mut::<VoteState>(&mut vote_state);
+
+    if vote_state.authorized_voter.voter != *vote_authority {
+        return Err(ProgramError::MissingRequiredSignature);
+    }
+    //TODO(wen): Implement BLS certificate processing
+    Ok(())
 }
 
 #[cfg(test)]

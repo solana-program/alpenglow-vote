@@ -13,6 +13,7 @@ use solana_program::{
 use spl_pod::primitives::PodU64;
 
 use crate::accounting;
+use crate::bls::BLSCertificateInstructionData;
 use crate::error::VoteError;
 use crate::instruction::{
     decode_instruction_data, decode_instruction_data_with_seed, decode_instruction_type,
@@ -288,6 +289,15 @@ pub fn process_instruction(
             let vote = decode_instruction_data::<PodSlot>(input)?;
 
             vote_processor::process_skip_vote(vote_account, authority, &clock, &slot_hashes, vote)
+        }
+        VoteInstruction::BLSCertificate => {
+            let Some(authority) = next_account_info(account_info_iter)?.signer_key() else {
+                return Err(ProgramError::MissingRequiredSignature);
+            };
+
+            let data = decode_instruction_data::<BLSCertificateInstructionData>(input)?;
+
+            vote_processor::process_bls_certificate(vote_account, authority, data)
         }
     }
 }
