@@ -61,7 +61,7 @@ pub struct VoteState {
     /// Only relevant after APE
     pub(crate) _replayed_bank_hash: Hash,
 
-    /// Assocaited BLS public key
+    /// Associated BLS public key
     pub(crate) bls_pubkey: BlsPubkey,
 }
 
