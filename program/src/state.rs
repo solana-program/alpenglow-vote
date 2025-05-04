@@ -1,6 +1,7 @@
 //! Program state
 
 use bytemuck::{Pod, Zeroable};
+use solana_bls::Pubkey as BlsPubkey;
 use solana_program::account_info::AccountInfo;
 use solana_program::clock::Clock;
 use solana_program::clock::Epoch;
@@ -59,6 +60,9 @@ pub struct VoteState {
     /// The bank hash of the latest replayed block
     /// Only relevant after APE
     pub(crate) _replayed_bank_hash: Hash,
+
+    /// Associated BLS public key
+    pub(crate) bls_pubkey: BlsPubkey,
 }
 
 #[repr(C)]
@@ -105,6 +109,7 @@ impl VoteState {
             next_authorized_voter: None,
             authorized_withdrawer: init_data.authorized_withdrawer,
             commission: init_data.commission,
+            bls_pubkey: init_data.bls_pubkey,
             ..VoteState::default()
         }
     }
