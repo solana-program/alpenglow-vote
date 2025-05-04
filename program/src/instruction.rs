@@ -4,7 +4,7 @@ use {
     crate::{
         error::VoteError,
         id,
-        state::{PodSlot, VoteState},
+        state::{BlsPubkey, PodSlot, VoteState},
         vote::{
             FinalizationVote, NotarizationFallbackVote, NotarizationVote, SkipFallbackVote,
             SkipVote,
@@ -13,7 +13,6 @@ use {
     },
     bytemuck::{Pod, Zeroable},
     num_enum::{IntoPrimitive, TryFromPrimitive},
-    solana_bls::Pubkey as BlsPubkey,
     solana_program::{
         instruction::{AccountMeta, Instruction},
         program_error::ProgramError,

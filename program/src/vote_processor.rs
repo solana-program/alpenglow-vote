@@ -230,7 +230,6 @@ pub(crate) fn process_skip_vote(
 #[cfg(test)]
 mod tests {
     use serial_test::serial;
-    use solana_bls::keypair::Keypair as BlsKeypair;
     use solana_sdk::entrypoint::SUCCESS;
     use solana_sdk::epoch_schedule::EpochSchedule;
     use solana_sdk::hash::Hash;
@@ -246,7 +245,7 @@ mod tests {
     use crate::vote_processor::{award_credits, set_credits};
     use crate::{
         instruction::InitializeAccountInstructionData,
-        state::VoteState,
+        state::{BlsPubkey, VoteState},
         vote_processor::{
             latency_to_credits, VOTE_CREDITS_GRACE_SLOTS, VOTE_CREDITS_MAXIMUM_PER_SLOT,
         },
@@ -291,8 +290,7 @@ mod tests {
     }
 
     fn setup_vote_state(clock: &Clock) -> VoteState {
-        let bls_keypair = BlsKeypair::new();
-        let bls_pubkey = bls_keypair.public.into();
+        let bls_pubkey = BlsPubkey::default();
         let iaid = InitializeAccountInstructionData {
             node_pubkey: Pubkey::new_unique(),
             authorized_voter: Pubkey::new_unique(),

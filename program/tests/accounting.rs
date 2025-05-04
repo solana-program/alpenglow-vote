@@ -4,11 +4,11 @@ use {
     alpenglow_vote::{
         accounting::EpochCredit,
         instruction::{self, AuthorityType, InitializeAccountInstructionData},
-        state::VoteState,
+        state::{BlsPubkey, VoteState},
     },
     mollusk_svm::Mollusk,
     rand::Rng,
-    solana_bls::{keypair::Keypair as BlsKeypair, Pubkey as BlsPubkey},
+    rand::RngCore,
     solana_program::pubkey::Pubkey,
     solana_sdk::{
         account::Account,
@@ -18,6 +18,13 @@ use {
     },
     spl_pod::bytemuck::pod_from_bytes,
 };
+
+fn random_bls_pubkey() -> BlsPubkey {
+    let mut rng = rand::rng();
+    let mut array = [0u8; 96];
+    rng.fill_bytes(&mut array);
+    BlsPubkey(array)
+}
 
 const SLOT: Slot = 53_084_024;
 const EPOCH: Epoch = 100;
@@ -88,8 +95,7 @@ fn test_initialize_vote_account_basic() {
     let authorized_voter = Keypair::new();
     let authorized_withdrawer = Keypair::new();
     let commission: u8 = rand::rng().random();
-    let bls_keypair = BlsKeypair::new();
-    let bls_pubkey = bls_keypair.public.into();
+    let bls_pubkey = random_bls_pubkey();
 
     let instruction = initialize_vote_account_mollusk(
         &vote_account,
@@ -138,8 +144,7 @@ fn test_authorize_voter_basic() {
     let node_key = Keypair::new();
     let authorized_voter = Keypair::new();
     let authorized_withdrawer = Keypair::new();
-    let bls_keypair = BlsKeypair::new();
-    let bls_pubkey = bls_keypair.public.into();
+    let bls_pubkey = random_bls_pubkey();
 
     let new_authority = Keypair::new();
 
@@ -204,8 +209,7 @@ fn test_authorize_withdrawer_basic() {
     let node_key = Keypair::new();
     let authorized_voter = Keypair::new();
     let authorized_withdrawer = Keypair::new();
-    let bls_keypair = BlsKeypair::new();
-    let bls_pubkey = bls_keypair.public.into();
+    let bls_pubkey = random_bls_pubkey();
 
     let new_authority = Keypair::new();
 
@@ -267,8 +271,7 @@ fn test_authorize_checked_voter_basic() {
     let node_key = Keypair::new();
     let authorized_voter = Keypair::new();
     let authorized_withdrawer = Keypair::new();
-    let bls_keypair = BlsKeypair::new();
-    let bls_pubkey = bls_keypair.public.into();
+    let bls_pubkey = random_bls_pubkey();
 
     let new_authority = Keypair::new();
 
@@ -334,8 +337,7 @@ fn test_authorize_checked_withdrawer_basic() {
     let node_key = Keypair::new();
     let authorized_voter = Keypair::new();
     let authorized_withdrawer = Keypair::new();
-    let bls_keypair = BlsKeypair::new();
-    let bls_pubkey = bls_keypair.public.into();
+    let bls_pubkey = random_bls_pubkey();
 
     let new_authority = Keypair::new();
 
@@ -398,8 +400,7 @@ fn test_authorize_with_seed_voter_basic() {
     let base_key = Keypair::new();
     let voter_seed = "voter-thequickbrownfox";
     let withdrawer_seed = "withdrawer-thequickbrownfox";
-    let bls_keypair = BlsKeypair::new();
-    let bls_pubkey = bls_keypair.public.into();
+    let bls_pubkey = random_bls_pubkey();
 
     let vote_account = Keypair::new();
     let node_key = Keypair::new();
@@ -477,8 +478,7 @@ fn test_authorize_with_seed_withdrawer_basic() {
     let base_key = Keypair::new();
     let voter_seed = "voter-thequickbrownfox";
     let withdrawer_seed = "withdrawer-thequickbrownfox";
-    let bls_keypair = BlsKeypair::new();
-    let bls_pubkey = bls_keypair.public.into();
+    let bls_pubkey = random_bls_pubkey();
 
     let vote_account = Keypair::new();
     let node_key = Keypair::new();
@@ -553,8 +553,7 @@ fn test_authorize_checked_with_seed_voter_basic() {
     let base_key = Keypair::new();
     let voter_seed = "voter-thequickbrownfox";
     let withdrawer_seed = "withdrawer-thequickbrownfox";
-    let bls_keypair = BlsKeypair::new();
-    let bls_pubkey = bls_keypair.public.into();
+    let bls_pubkey = random_bls_pubkey();
 
     let vote_account = Keypair::new();
     let node_key = Keypair::new();
@@ -632,8 +631,7 @@ fn test_authorize_checked_with_seed_withdrawer_basic() {
     let base_key = Keypair::new();
     let voter_seed = "voter-thequickbrownfox";
     let withdrawer_seed = "withdrawer-thequickbrownfox";
-    let bls_keypair = BlsKeypair::new();
-    let bls_pubkey = bls_keypair.public.into();
+    let bls_pubkey = random_bls_pubkey();
 
     let vote_account = Keypair::new();
     let node_key = Keypair::new();
@@ -708,8 +706,7 @@ fn test_update_commission_basic() {
     let node_key = Keypair::new();
     let authorized_voter = Keypair::new();
     let authorized_withdrawer = Keypair::new();
-    let bls_keypair = BlsKeypair::new();
-    let bls_pubkey = bls_keypair.public.into();
+    let bls_pubkey = random_bls_pubkey();
 
     // Create a vote account with known commission
     let commission_before: u8 = 42;
@@ -772,8 +769,7 @@ fn test_update_validator_identity_basic() {
     let old_node = Keypair::new();
     let authorized_voter = Keypair::new();
     let authorized_withdrawer = Keypair::new();
-    let bls_keypair = BlsKeypair::new();
-    let bls_pubkey = bls_keypair.public.into();
+    let bls_pubkey = random_bls_pubkey();
 
     // This (probably) won't fail (p is very low - if it fails, you probably win something)
     let new_node = Keypair::new();
@@ -838,8 +834,7 @@ fn test_withdraw_basic() {
     let authorized_voter = Keypair::new();
     let authorized_withdrawer = Keypair::new();
     let recipient_account = Keypair::new();
-    let bls_keypair = BlsKeypair::new();
-    let bls_pubkey = bls_keypair.public.into();
+    let bls_pubkey = random_bls_pubkey();
 
     // Create a vote account
     let initialize_ixn = initialize_vote_account_mollusk(

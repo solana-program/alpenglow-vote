@@ -1,7 +1,6 @@
 //! Program state
 
 use bytemuck::{Pod, Zeroable};
-use solana_bls::Pubkey as BlsPubkey;
 use solana_program::account_info::AccountInfo;
 use solana_program::clock::Clock;
 use solana_program::clock::Epoch;
@@ -281,3 +280,16 @@ impl VoteState {
         self.epoch_credits = epoch_credits
     }
 }
+
+/// A BLS public key (TODO: defining BLS pubkey type inside vote program for now)
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub struct BlsPubkey(pub [u8; 96]);
+
+impl Default for BlsPubkey {
+    fn default() -> Self {
+        Self([0; 96])
+    }
+}
+
+unsafe impl Zeroable for BlsPubkey {}
+unsafe impl Pod for BlsPubkey {}
