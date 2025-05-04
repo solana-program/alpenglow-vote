@@ -1,17 +1,17 @@
-//! Define certificte types here for now, maybe move later if we process
+//! Define certificate types here for now, maybe move later if we process
 //! certificates off chain
 
 #[derive(Clone, Copy, Debug, PartialEq)]
 /// Certificate Type in Alpenglow
 pub enum CertificateType {
-    /// Finalize slow: >= 60% Finalize
+    /// Finalize slow: at least 60 percent Finalize
     Finalize,
-    /// Finalize fast: >= 80% Notarize
+    /// Finalize fast: at least 80 percent Notarize
     FinalizeFast,
-    /// Notarize: >= 60% Notarize
+    /// Notarize: at least 60 percent Notarize
     Notarize,
-    /// Notarize fallback: >= 60% Notarize or NotarizeFallback
+    /// Notarize fallback: at least 60 percent Notarize or NotarizeFallback
     NotarizeFallback,
-    /// Skip: >= 60% Skip or SkipFallback
+    /// Skip: at least 60 percent Skip or SkipFallback
     Skip,
 }
