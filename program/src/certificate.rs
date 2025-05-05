@@ -1,7 +1,8 @@
 //! Define certificate types here for now, maybe move later if we process
 //! certificates off chain
 
-#[derive(Clone, Copy, Debug, PartialEq)]
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
 /// Certificate Type in Alpenglow
 pub enum CertificateType {
     /// Finalize slow: at least 60 percent Finalize
