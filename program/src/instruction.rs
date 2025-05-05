@@ -13,7 +13,6 @@ use {
     },
     bytemuck::{Pod, Zeroable},
     num_enum::{IntoPrimitive, TryFromPrimitive},
-    solana_bls::Pubkey as BlsPubkey,
     solana_program::{
         instruction::{AccountMeta, Instruction},
         program_error::ProgramError,
@@ -281,8 +280,6 @@ pub struct InitializeAccountInstructionData {
     pub authorized_withdrawer: Pubkey,
     /// The commission percentage for this vote account
     pub commission: u8,
-    /// BLS public key
-    pub bls_pubkey: BlsPubkey,
 }
 
 /// Instruction builder to initialize a new vote account with a valid VoteState:
