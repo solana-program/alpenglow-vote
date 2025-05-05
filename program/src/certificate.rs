@@ -31,5 +31,6 @@ pub struct Certificate {
     pub block_id: Option<Hash>,
     /// The bank hash of the block
     pub replayed_bank_hash: Option<Hash>,
-    //TODO(wen): add BLS signature, pubkey, and bitmap
+    //TODO(wen): add BLS signature and pubkey
+    pub bitmap: Vec<u8>,
 }

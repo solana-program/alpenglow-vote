@@ -31,12 +31,14 @@ impl BlsMessage {
         slot: Slot,
         block_id: Option<Hash>,
         replayed_bank_hash: Option<Hash>,
+        bitmap: Vec<u8>,
     ) -> Self {
         Self::Certificate(Certificate {
             certificate_type,
             slot,
             block_id,
             replayed_bank_hash,
+            bitmap,
         })
     }
 }
