@@ -4827,8 +4827,8 @@ dependencies = [
 
 [[package]]
 name = "solana-bls"
-version = "2.3.0"
-source = "git+https://github.com/anza-xyz/alpenglow#0afa729a5c8b4c41752c9e16fd73a8184d0222cc"
+version = "0.1.0"
+source = "git+https://github.com/anza-xyz/solana-sdk?branch=bls#a09580963525e608b5650b8be36f234d980b820c"
 dependencies = [
  "blst",
  "blstrs",
@@ -4838,20 +4838,6 @@ dependencies = [
  "rand 0.8.5",
  "serde",
  "serde_with",
- "solana-bls12-381",
- "thiserror 2.0.12",
-]
-
-[[package]]
-name = "solana-bls12-381"
-version = "2.3.0"
-source = "git+https://github.com/anza-xyz/alpenglow#0afa729a5c8b4c41752c9e16fd73a8184d0222cc"
-dependencies = [
- "blst",
- "bytemuck",
- "bytemuck_derive",
- "solana-curve-traits",
- "solana-define-syscall",
  "thiserror 2.0.12",
 ]
 
@@ -5239,11 +5225,6 @@ dependencies = [
  "solana-pubkey",
  "solana-stable-layout",
 ]
-
-[[package]]
-name = "solana-curve-traits"
-version = "2.3.0"
-source = "git+https://github.com/anza-xyz/alpenglow#0afa729a5c8b4c41752c9e16fd73a8184d0222cc"
 
 [[package]]
 name = "solana-curve25519"
