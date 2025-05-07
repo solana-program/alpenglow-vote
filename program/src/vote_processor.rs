@@ -230,6 +230,7 @@ pub(crate) fn process_skip_vote(
 #[cfg(test)]
 mod tests {
     use serial_test::serial;
+    use solana_bls::keypair::Keypair as BlsKeypair;
     use solana_sdk::entrypoint::SUCCESS;
     use solana_sdk::epoch_schedule::EpochSchedule;
     use solana_sdk::hash::Hash;
@@ -290,11 +291,14 @@ mod tests {
     }
 
     fn setup_vote_state(clock: &Clock) -> VoteState {
+        let bls_keypair = BlsKeypair::new();
+        let bls_pubkey = bls_keypair.public.into();
         let iaid = InitializeAccountInstructionData {
             node_pubkey: Pubkey::new_unique(),
             authorized_voter: Pubkey::new_unique(),
             authorized_withdrawer: Pubkey::new_unique(),
             commission: 0_u8,
+            bls_pubkey,
         };
 
         VoteState::new(&iaid, clock)
