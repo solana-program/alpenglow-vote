@@ -121,6 +121,7 @@ impl VoteState {
         epoch: Epoch,
         authorized_withdrawer: Pubkey,
         commission: u8,
+        bls_pubkey: BlsPubkey,
     ) -> Self {
         Self {
             version: Self::VOTE_STATE_VERSION,
@@ -131,6 +132,7 @@ impl VoteState {
             },
             authorized_withdrawer,
             commission,
+            bls_pubkey,
             ..VoteState::default()
         }
     }
@@ -143,6 +145,7 @@ impl VoteState {
         authorized_withdrawer: &Pubkey,
         commission: u8,
         lamports: u64,
+        bls_pubkey: BlsPubkey,
     ) -> AccountSharedData {
         let mut account = AccountSharedData::new(lamports, Self::size(), &crate::id());
         let vote_state = Self::new_for_tests(
@@ -151,6 +154,7 @@ impl VoteState {
             0, // Epoch
             *authorized_withdrawer,
             commission,
+            bls_pubkey,
         );
         vote_state.serialize_into(account.data_as_mut_slice());
         account
@@ -279,5 +283,10 @@ impl VoteState {
     /// Set the epoch credits
     pub fn set_epoch_credits(&mut self, epoch_credits: EpochCredit) {
         self.epoch_credits = epoch_credits
+    }
+
+    /// Get the bls pubkey
+    pub fn bls_pubkey(&self) -> &BlsPubkey {
+        &self.bls_pubkey
     }
 }
