@@ -285,7 +285,7 @@ impl VoteState {
         self.epoch_credits = epoch_credits
     }
 
-    /// Get the bls pubkey
+    /// Get the BLS pubkey
     pub fn bls_pubkey(&self) -> &BlsPubkey {
         &self.bls_pubkey
     }
