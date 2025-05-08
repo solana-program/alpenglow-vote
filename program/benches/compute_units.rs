@@ -8,6 +8,7 @@ use {
     },
     mollusk_svm::Mollusk,
     mollusk_svm_bencher::MolluskComputeUnitBencher,
+    solana_bls::Pubkey as BLSPubkey,
     solana_hash::Hash,
     solana_sdk::{account::Account, clock::Clock, pubkey::Pubkey},
 };
