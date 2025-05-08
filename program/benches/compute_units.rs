@@ -16,8 +16,15 @@ const BENCHMARK_OUT_DIR: &str = "./benches";
 const SBF_OUT_DIR: &str = "../target/deploy";
 
 fn vote_account(authority: &Pubkey) -> Account {
-    VoteState::create_account_with_authorized(&Pubkey::new_unique(), authority, authority, 0, 0)
-        .into()
+    VoteState::create_account_with_authorized(
+        &Pubkey::new_unique(),
+        authority,
+        authority,
+        0,
+        0,
+        BLSPubkey::default(),
+    )
+    .into()
 }
 
 fn main() {
