@@ -5,18 +5,20 @@ use {
         certificate::{Certificate, CertificateType},
         vote::Vote,
     },
+    bit_vec::BitVec,
+    solana_bls::Signature as BLSSignature,
     solana_hash::Hash,
     solana_program::clock::Slot,
 };
 
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
-#[derive(Clone, Copy, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq)]
 /// BLS message type in Alpenglow
 pub enum BlsMessage {
     /// Vote message
     Vote(Vote),
     /// Certificate message
-    Certificate(Certificate),
+    Certificate(Box<Certificate>),
 }
 
 impl BlsMessage {
@@ -31,14 +33,16 @@ impl BlsMessage {
         slot: Slot,
         block_id: Option<Hash>,
         replayed_bank_hash: Option<Hash>,
-        bitmap: Vec<u8>,
+        signature: BLSSignature,
+        bitmap: BitVec,
     ) -> Self {
-        Self::Certificate(Certificate {
+        Self::Certificate(Box::new(Certificate {
             certificate_type,
             slot,
             block_id,
             replayed_bank_hash,
+            signature,
             bitmap,
-        })
+        }))
     }
 }

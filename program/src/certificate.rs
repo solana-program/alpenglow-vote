@@ -1,7 +1,9 @@
 //! Define BLS certificate to be sent all to all in Alpenglow
 
-use solana_hash::Hash;
-use solana_program::clock::Slot;
+use {
+    bit_vec::BitVec, solana_bls::Signature as BLSSignature, solana_hash::Hash,
+    solana_program::clock::Slot,
+};
 
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 #[derive(Clone, Copy, Debug, PartialEq)]
@@ -20,7 +22,7 @@ pub enum CertificateType {
 }
 
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
-#[derive(Clone, Copy, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq)]
 /// Certificate Type in Alpenglow
 pub struct Certificate {
     /// Certificate type
@@ -31,6 +33,8 @@ pub struct Certificate {
     pub block_id: Option<Hash>,
     /// The bank hash of the block
     pub replayed_bank_hash: Option<Hash>,
-    //TODO(wen): add BLS signature and pubkey
-    pub bitmap: Vec<u8>,
+    /// The signature
+    pub signature: BLSSignature,
+    /// The bitmap for validators, little endian byte order
+    pub bitmap: BitVec,
 }

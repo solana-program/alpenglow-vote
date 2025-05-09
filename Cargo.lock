@@ -138,6 +138,7 @@ name = "alpenglow-vote"
 version = "0.1.0"
 dependencies = [
  "bincode",
+ "bit-vec",
  "bitflags 2.9.0",
  "bytemuck",
  "either",
