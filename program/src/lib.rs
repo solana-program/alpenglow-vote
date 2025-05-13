@@ -4,6 +4,7 @@
 #![cfg_attr(feature = "frozen-abi", feature(min_specialization))]
 
 pub mod accounting;
+pub mod bls_message;
 pub mod certificate;
 mod entrypoint;
 pub mod error;
