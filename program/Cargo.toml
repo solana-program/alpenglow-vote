@@ -21,7 +21,7 @@ serde = ["dep:serde", "dep:serde_derive"]
 
 [dependencies]
 bincode = "1.3.3"
-bit-vec = "0.8"
+bv = "0.11.1"
 bitflags = { version = "2.9.0", features = ["serde"] }
 bytemuck = { version = "1.22.0", features = ["derive"] }
 either = "1.11.0"
@@ -30,7 +30,7 @@ num-traits = "0.2"
 num_enum = "0.7.3"
 serde = { version = "1.0.217", optional = true } # must match the serde_derive version, see https://github.com/serde-rs/serde/issues/2584#issuecomment-1685252251
 serde_derive = { version = "1.0.217", optional = true } # must match the serde version, see https://github.com/serde-rs/serde/issues/2584#issuecomment-1685252251
-solana-bls = { version = "0.1.1", git = "https://github.com/anza-xyz/solana-sdk", branch = "bls", features = ["bytemuck"] } # TODO: update this when `solana-bls` crate is released and merged into master branch
+solana-bls = { version = "0.1.1", git = "https://github.com/anza-xyz/solana-sdk", branch = "bls", features = ["bytemuck", "serde"] } # TODO: update this when `solana-bls` crate is released and merged into master branch
 solana-frozen-abi = { version = "2.2.1", optional = true, features = [
     "frozen-abi",
 ] }

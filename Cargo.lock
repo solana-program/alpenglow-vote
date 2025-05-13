@@ -138,8 +138,8 @@ name = "alpenglow-vote"
 version = "0.1.0"
 dependencies = [
  "bincode",
- "bit-vec",
  "bitflags 2.9.0",
+ "bv",
  "bytemuck",
  "either",
  "lazy_static",
@@ -4892,9 +4892,12 @@ dependencies = [
  "blst",
  "blstrs",
  "bytemuck",
+ "cfg_eval",
  "ff",
  "group",
  "rand 0.8.5",
+ "serde",
+ "serde_with",
  "thiserror 2.0.12",
 ]
 

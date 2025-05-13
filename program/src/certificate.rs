@@ -1,7 +1,9 @@
 //! Define BLS certificate to be sent all to all in Alpenglow
+#[cfg(feature = "serde")]
+use serde::{Deserialize, Serialize};
 
 use {
-    bit_vec::BitVec, solana_bls::Signature as BLSSignature, solana_hash::Hash,
+    bv::BitVec, solana_bls::Signature as BLSSignature, solana_hash::Hash,
     solana_program::clock::Slot,
 };
 
@@ -36,5 +38,5 @@ pub struct Certificate {
     /// The signature
     pub signature: BLSSignature,
     /// The bitmap for validators, little endian byte order
-    pub bitmap: BitVec,
+    pub bitmap: BitVec<u8>,
 }
