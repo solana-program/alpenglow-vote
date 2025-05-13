@@ -1,11 +1,13 @@
 //! Put BLS message here so all clients can agree on the format
+#[cfg(feature = "serde")]
+use serde::{Deserialize, Serialize};
 
 use {
     crate::{
         certificate::{Certificate, CertificateType},
         vote::Vote,
     },
-    bit_vec::BitVec,
+    bv::BitVec,
     solana_bls::Signature as BLSSignature,
     solana_hash::Hash,
     solana_program::clock::Slot,
@@ -34,7 +36,7 @@ impl BlsMessage {
         block_id: Option<Hash>,
         replayed_bank_hash: Option<Hash>,
         signature: BLSSignature,
-        bitmap: BitVec,
+        bitmap: BitVec<u8>,
     ) -> Self {
         Self::Certificate(Box::new(Certificate {
             certificate_type,
