@@ -15,12 +15,13 @@ use {
 
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 #[derive(Clone, Debug, PartialEq)]
+#[allow(clippy::large_enum_variant)]
 /// BLS message type in Alpenglow
 pub enum BlsMessage {
     /// Vote message
     Vote(Vote),
     /// Certificate message
-    Certificate(Box<Certificate>),
+    Certificate(Certificate),
 }
 
 impl BlsMessage {
@@ -38,13 +39,13 @@ impl BlsMessage {
         signature: BLSSignature,
         bitmap: BitVec<u8, Lsb0>,
     ) -> Self {
-        Self::Certificate(Box::new(Certificate {
+        Self::Certificate(Certificate {
             certificate_type,
             slot,
             block_id,
             replayed_bank_hash,
             signature,
             bitmap,
-        }))
+        })
     }
 }
