@@ -17,14 +17,14 @@ use {
 #[derive(Clone, Debug, PartialEq)]
 #[allow(clippy::large_enum_variant)]
 /// BLS message type in Alpenglow
-pub enum BlsMessage {
+pub enum BLSMessage {
     /// Vote message
     Vote(Vote),
     /// Certificate message
     Certificate(Certificate),
 }
 
-impl BlsMessage {
+impl BLSMessage {
     /// Create a new vote message
     pub fn new_vote(vote: Vote) -> Self {
         Self::Vote(vote)
