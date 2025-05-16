@@ -76,4 +76,16 @@ impl BLSMessage {
             signature,
         }
     }
+
+    #[cfg(feature = "serde")]
+    /// Deserialize a BLS message from bytes
+    pub fn deserialize(bls_message_in_bytes: &[u8]) -> Self {
+        bincode::deserialize(bls_message_in_bytes).unwrap()
+    }
+
+    #[cfg(feature = "serde")]
+    /// Serialize a BLS message to bytes
+    pub fn serialize(&self) -> Vec<u8> {
+        bincode::serialize(self).unwrap()
+    }
 }
