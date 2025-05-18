@@ -1,4 +1,4 @@
-//! Put BLS message here so all clients can agree on the format
+//! Put BLS messages here so all clients can agree on the format
 #[cfg(feature = "serde")]
 use serde::{Deserialize, Serialize};
 
@@ -25,37 +25,50 @@ pub struct BLSMessageVoteData {
 
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 #[derive(Clone, Debug, PartialEq)]
-#[allow(clippy::large_enum_variant)]
-/// BLS message data in Alpenglow
-pub enum BLSMessageData {
-    /// Vote message, with the vote and the rank of the validator.
-    Vote(BLSMessageVoteData),
-    /// Certificate message
-    Certificate(Certificate),
-}
-
-#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
-#[derive(Clone, Debug, PartialEq)]
-/// BLS message to be sent all to all in Alpenglow
-pub struct BLSMessage {
-    /// The message data
-    pub message_data: BLSMessageData,
+/// BLS vote message to be sent all to all in Alpenglow
+pub struct BLSVoteMessage {
+    /// The vote data
+    pub vote_data: BLSMessageVoteData,
     /// The signature of the message
     pub signature: BLSSignature,
 }
 
-impl BLSMessage {
+impl BLSVoteMessage {
     /// Create a new vote message
     pub fn new_vote(vote: Vote, my_rank: u16, signature: BLSSignature) -> Self {
         Self {
-            message_data: BLSMessageData::Vote(BLSMessageVoteData {
+            vote_data: BLSMessageVoteData {
                 vote,
                 rank: my_rank,
-            }),
+            },
             signature,
         }
     }
 
+    #[cfg(feature = "serde")]
+    /// Deserialize a BLS message from bytes
+    pub fn deserialize(bls_message_in_bytes: &[u8]) -> Self {
+        bincode::deserialize(bls_message_in_bytes).unwrap()
+    }
+
+    #[cfg(feature = "serde")]
+    /// Serialize a BLS message to bytes
+    pub fn serialize(&self) -> Vec<u8> {
+        bincode::serialize(self).unwrap()
+    }
+}
+
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
+#[derive(Clone, Debug, PartialEq)]
+/// BLS certificate message to be sent all to all in Alpenglow
+pub struct BLSCertificateMessage {
+    /// The certificate
+    pub certificate: Certificate,
+    /// The signature of the message
+    pub signature: BLSSignature,
+}
+
+impl BLSCertificateMessage {
     /// Create a new certificate message
     pub fn new_certificate(
         certificate_type: CertificateType,
@@ -66,13 +79,13 @@ impl BLSMessage {
         signature: BLSSignature,
     ) -> Self {
         Self {
-            message_data: BLSMessageData::Certificate(Certificate {
+            certificate: Certificate {
                 certificate_type,
                 slot,
                 block_id,
                 replayed_bank_hash,
                 bitmap,
-            }),
+            },
             signature,
         }
     }
