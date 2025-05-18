@@ -27,21 +27,21 @@ pub struct BLSMessageVoteData {
 #[derive(Clone, Debug, PartialEq)]
 /// BLS vote message to be sent all to all in Alpenglow
 pub struct BLSVoteMessage {
-    /// The vote data
-    pub vote_data: BLSMessageVoteData,
     /// The signature of the message
     pub signature: BLSSignature,
+    /// The vote data
+    pub vote_data: BLSMessageVoteData,
 }
 
 impl BLSVoteMessage {
     /// Create a new vote message
     pub fn new_vote(vote: Vote, my_rank: u16, signature: BLSSignature) -> Self {
         Self {
+            signature,
             vote_data: BLSMessageVoteData {
                 vote,
                 rank: my_rank,
             },
-            signature,
         }
     }
 
@@ -62,10 +62,10 @@ impl BLSVoteMessage {
 #[derive(Clone, Debug, PartialEq)]
 /// BLS certificate message to be sent all to all in Alpenglow
 pub struct BLSCertificateMessage {
-    /// The certificate
-    pub certificate: Certificate,
     /// The signature of the message
     pub signature: BLSSignature,
+    /// The certificate
+    pub certificate: Certificate,
 }
 
 impl BLSCertificateMessage {
@@ -76,9 +76,10 @@ impl BLSCertificateMessage {
         block_id: Option<Hash>,
         replayed_bank_hash: Option<Hash>,
         bitmap: BitVec<u8, Lsb0>,
-        signature: BLSSignature,
+        aggregate_signature: BLSSignature,
     ) -> Self {
         Self {
+            signature,
             certificate: Certificate {
                 certificate_type,
                 slot,
@@ -86,7 +87,6 @@ impl BLSCertificateMessage {
                 replayed_bank_hash,
                 bitmap,
             },
-            signature,
         }
     }
 
