@@ -2,10 +2,7 @@
 #[cfg(feature = "serde")]
 use serde::{Deserialize, Serialize};
 
-use {
-    bitvec::prelude::*, solana_bls::Signature as BLSSignature, solana_hash::Hash,
-    solana_program::clock::Slot,
-};
+use {solana_hash::Hash, solana_program::clock::Slot};
 
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 #[derive(Clone, Copy, Debug, PartialEq)]
@@ -26,7 +23,7 @@ pub enum CertificateType {
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 #[derive(Clone, Debug, PartialEq)]
 /// Certificate Type in Alpenglow
-pub struct CertificateMessage {
+pub struct Certificate {
     /// Certificate type
     pub certificate_type: CertificateType,
     /// The slot of the block
@@ -35,8 +32,4 @@ pub struct CertificateMessage {
     pub block_id: Option<Hash>,
     /// The bank hash of the block
     pub replayed_bank_hash: Option<Hash>,
-    /// The BLS signature
-    pub signature: BLSSignature,
-    /// The bitmap for validators, little endian byte order
-    pub bitmap: BitVec<u8, Lsb0>,
 }

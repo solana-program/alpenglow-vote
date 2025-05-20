@@ -3,14 +3,9 @@
 use serde::{Deserialize, Serialize};
 
 use {
-    crate::{
-        certificate::{CertificateMessage, CertificateType},
-        vote::Vote,
-    },
+    crate::{certificate::Certificate, vote::Vote},
     bitvec::prelude::*,
     solana_bls::Signature as BLSSignature,
-    solana_hash::Hash,
-    solana_program::clock::Slot,
 };
 
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
@@ -23,6 +18,18 @@ pub struct VoteMessage {
     pub signature: BLSSignature,
     /// The rank of the validator
     pub rank: u16,
+}
+
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
+#[derive(Clone, Debug, PartialEq)]
+/// BLS vote message, we need rank to look up pubkey
+pub struct CertificateMessage {
+    /// The certificate
+    pub certificate: Certificate,
+    /// The signature
+    pub signature: BLSSignature,
+    /// The bitmap for validators, little endian byte order
+    pub bitmap: BitVec<u8, Lsb0>,
 }
 
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
@@ -48,18 +55,12 @@ impl BLSMessage {
 
     /// Create a new certificate message
     pub fn new_certificate(
-        certificate_type: CertificateType,
-        slot: Slot,
-        block_id: Option<Hash>,
-        replayed_bank_hash: Option<Hash>,
+        certificate: Certificate,
         bitmap: BitVec<u8, Lsb0>,
         signature: BLSSignature,
     ) -> Self {
         Self::Certificate(CertificateMessage {
-            certificate_type,
-            slot,
-            block_id,
-            replayed_bank_hash,
+            certificate,
             signature,
             bitmap,
         })
