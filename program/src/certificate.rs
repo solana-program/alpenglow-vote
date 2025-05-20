@@ -26,7 +26,7 @@ pub enum CertificateType {
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 #[derive(Clone, Debug, PartialEq)]
 /// Certificate Type in Alpenglow
-pub struct Certificate {
+pub struct CertificateMessage {
     /// Certificate type
     pub certificate_type: CertificateType,
     /// The slot of the block

@@ -4,7 +4,7 @@ use serde::{Deserialize, Serialize};
 
 use {
     crate::{
-        certificate::{Certificate, CertificateType},
+        certificate::{CertificateMessage, CertificateType},
         vote::Vote,
     },
     bitvec::prelude::*,
@@ -33,7 +33,7 @@ pub enum BLSMessage {
     /// Vote message, with the vote and the rank of the validator.
     Vote(VoteMessage),
     /// Certificate message
-    Certificate(Certificate),
+    Certificate(CertificateMessage),
 }
 
 impl BLSMessage {
@@ -55,7 +55,7 @@ impl BLSMessage {
         bitmap: BitVec<u8, Lsb0>,
         signature: BLSSignature,
     ) -> Self {
-        Self::Certificate(Certificate {
+        Self::Certificate(CertificateMessage {
             certificate_type,
             slot,
             block_id,
