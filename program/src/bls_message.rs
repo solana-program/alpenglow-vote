@@ -15,10 +15,12 @@ use {
 
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 #[derive(Clone, Copy, Debug, PartialEq)]
-/// BLS message vote data, we need rank to look up pubkey
-pub struct BLSMessageVoteData {
+/// BLS vote message, we need rank to look up pubkey
+pub struct VoteMessage {
     /// The vote
     pub vote: Vote,
+    /// The signature
+    pub signature: BLSSignature,
     /// The rank of the validator
     pub rank: u16,
 }
@@ -27,33 +29,21 @@ pub struct BLSMessageVoteData {
 #[derive(Clone, Debug, PartialEq)]
 #[allow(clippy::large_enum_variant)]
 /// BLS message data in Alpenglow
-pub enum BLSMessageData {
+pub enum BLSMessage {
     /// Vote message, with the vote and the rank of the validator.
-    Vote(BLSMessageVoteData),
+    Vote(VoteMessage),
     /// Certificate message
     Certificate(Certificate),
 }
 
-#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
-#[derive(Clone, Debug, PartialEq)]
-/// BLS message to be sent all to all in Alpenglow
-pub struct BLSMessage {
-    /// The message data
-    pub message_data: BLSMessageData,
-    /// The signature of the message
-    pub signature: BLSSignature,
-}
-
 impl BLSMessage {
     /// Create a new vote message
-    pub fn new_vote(vote: Vote, my_rank: u16, signature: BLSSignature) -> Self {
-        Self {
-            message_data: BLSMessageData::Vote(BLSMessageVoteData {
-                vote,
-                rank: my_rank,
-            }),
+    pub fn new_vote(vote: Vote, signature: BLSSignature, rank: u16) -> Self {
+        Self::Vote(VoteMessage {
+            vote,
             signature,
-        }
+            rank,
+        })
     }
 
     /// Create a new certificate message
@@ -65,16 +55,14 @@ impl BLSMessage {
         bitmap: BitVec<u8, Lsb0>,
         signature: BLSSignature,
     ) -> Self {
-        Self {
-            message_data: BLSMessageData::Certificate(Certificate {
-                certificate_type,
-                slot,
-                block_id,
-                replayed_bank_hash,
-                bitmap,
-            }),
+        Self::Certificate(Certificate {
+            certificate_type,
+            slot,
+            block_id,
+            replayed_bank_hash,
             signature,
-        }
+            bitmap,
+        })
     }
 
     #[cfg(feature = "serde")]
