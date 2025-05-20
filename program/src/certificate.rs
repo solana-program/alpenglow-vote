@@ -2,7 +2,7 @@
 #[cfg(feature = "serde")]
 use serde::{Deserialize, Serialize};
 
-use {bitvec::prelude::*, solana_hash::Hash, solana_program::clock::Slot};
+use {solana_hash::Hash, solana_program::clock::Slot};
 
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 #[derive(Clone, Copy, Debug, PartialEq)]
@@ -32,6 +32,4 @@ pub struct Certificate {
     pub block_id: Option<Hash>,
     /// The bank hash of the block
     pub replayed_bank_hash: Option<Hash>,
-    /// The bitmap for validators, little endian byte order
-    pub bitmap: BitVec<u8, Lsb0>,
 }
