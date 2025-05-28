@@ -160,6 +160,16 @@ impl Vote {
         matches!(self, Self::Skip(_))
     }
 
+    /// Whether the vote is a notarization fallback vote
+    pub fn is_notarize_fallback(&self) -> bool {
+        matches!(self, Self::NotarizeFallback(_))
+    }
+
+    /// Whether the vote is a skip fallback vote
+    pub fn is_skip_fallback(&self) -> bool {
+        matches!(self, Self::SkipFallback(_))
+    }
+
     /// Whether the vote is a notarization or finalization
     pub fn is_notarization_or_finalization(&self) -> bool {
         matches!(self, Self::Notarize(_) | Self::Finalize(_))
