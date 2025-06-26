@@ -145,6 +145,24 @@ impl Vote {
         }
     }
 
+    /// The block id associated with the block which was voted for
+    pub fn block_id(&self) -> Option<&Hash> {
+        match self {
+            Self::Notarize(vote) => Some(vote.block_id()),
+            Self::NotarizeFallback(vote) => Some(vote.block_id()),
+            Self::Finalize(_) | Self::Skip(_) | Self::SkipFallback(_) => None,
+        }
+    }
+
+    /// The replayed bank hash associated with the block which was voted for
+    pub fn replayed_bank_hash(&self) -> Option<&Hash> {
+        match self {
+            Self::Notarize(vote) => Some(vote.replayed_bank_hash()),
+            Self::NotarizeFallback(vote) => Some(vote.replayed_bank_hash()),
+            Self::Finalize(_) | Self::Skip(_) | Self::SkipFallback(_) => None,
+        }
+    }
+
     /// Whether the vote is a notarization vote
     pub fn is_notarization(&self) -> bool {
         matches!(self, Self::Notarize(_))
