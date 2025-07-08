@@ -8,6 +8,9 @@ use {
     solana_bls::Signature as BLSSignature,
 };
 
+/// The seed used to derive the BLS keypair
+pub const BLS_KEYPAIR_DERIVE_SEED: &[u8; 9] = b"alpenglow";
+
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 #[derive(Clone, Copy, Debug, PartialEq)]
 /// BLS vote message, we need rank to look up pubkey
