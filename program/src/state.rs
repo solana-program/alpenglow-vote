@@ -1,7 +1,7 @@
 //! Program state
 
 use bytemuck::{Pod, Zeroable};
-use solana_bls::Pubkey as BlsPubkey;
+use solana_bls_signatures::Pubkey as BlsPubkey;
 use solana_program::account_info::AccountInfo;
 use solana_program::clock::Clock;
 use solana_program::clock::Epoch;

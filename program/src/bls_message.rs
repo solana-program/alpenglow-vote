@@ -5,7 +5,7 @@ use serde::{Deserialize, Serialize};
 use {
     crate::{certificate::Certificate, vote::Vote},
     bitvec::prelude::*,
-    solana_bls::Signature as BLSSignature,
+    solana_bls_signatures::Signature as BLSSignature,
 };
 
 /// The seed used to derive the BLS keypair
