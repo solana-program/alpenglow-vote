@@ -8,7 +8,7 @@ use {
     },
     mollusk_svm::Mollusk,
     rand::Rng,
-    solana_bls::{keypair::Keypair as BlsKeypair, Pubkey as BlsPubkey},
+    solana_bls_signatures::{keypair::Keypair as BlsKeypair, Pubkey as BlsPubkey},
     solana_program::pubkey::Pubkey,
     solana_sdk::{
         account::Account,

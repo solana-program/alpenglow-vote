@@ -1,3 +1,13 @@
+#### 2025-07-09 03:07:30.059615 UTC
+
+Solana CLI Version: solana-cli 2.3.0 (src:a2e21dda; feat:3640012085, client:Agave)
+
+| Name | CUs | Delta |
+|------|------|-------|
+| finalize | 781 | +3 |
+| notarize | 1464 | -115 |
+| skip | 1385 | -135 |
+
 #### 2025-04-17 15:15:58.728625808 UTC
 
 Solana CLI Version: solana-cli 2.1.1 (src:adeac022; feat:2252099268, client:Agave)

@@ -230,7 +230,7 @@ pub(crate) fn process_skip_vote(
 #[cfg(test)]
 mod tests {
     use serial_test::serial;
-    use solana_bls::keypair::Keypair as BlsKeypair;
+    use solana_bls_signatures::keypair::Keypair as BlsKeypair;
     use solana_sdk::entrypoint::SUCCESS;
     use solana_sdk::epoch_schedule::EpochSchedule;
     use solana_sdk::hash::Hash;

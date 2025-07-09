@@ -153,7 +153,7 @@ dependencies = [
  "serde_derive",
  "serial_test",
  "solana-account",
- "solana-bls",
+ "solana-bls-signatures",
  "solana-client",
  "solana-entry",
  "solana-frozen-abi",
@@ -4885,9 +4885,10 @@ dependencies = [
 ]
 
 [[package]]
-name = "solana-bls"
-version = "0.1.1"
-source = "git+https://github.com/anza-xyz/solana-sdk?branch=bls#9e1431b3e83310bb118c47404265d905acea2dce"
+name = "solana-bls-signatures"
+version = "0.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "af089f712fb5cbef2d73ac7ffee9cad05ada6cd1fd5c812338df040bcd3c410b"
 dependencies = [
  "base64 0.22.1",
  "blst",
@@ -4898,6 +4899,7 @@ dependencies = [
  "group",
  "rand 0.8.5",
  "serde",
+ "serde_json",
  "serde_with",
  "thiserror 2.0.12",
 ]

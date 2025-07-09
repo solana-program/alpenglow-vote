@@ -13,7 +13,7 @@ use {
     },
     bytemuck::{Pod, Zeroable},
     num_enum::{IntoPrimitive, TryFromPrimitive},
-    solana_bls::Pubkey as BlsPubkey,
+    solana_bls_signatures::Pubkey as BlsPubkey,
     solana_program::{
         instruction::{AccountMeta, Instruction},
         program_error::ProgramError,
